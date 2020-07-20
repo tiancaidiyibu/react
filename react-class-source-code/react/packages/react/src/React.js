@@ -6,7 +6,7 @@
  */
 
 import ReactVersion from 'shared/ReactVersion';
-import {
+import { 
   REACT_CONCURRENT_MODE_TYPE,
   REACT_FRAGMENT_TYPE,
   REACT_PROFILER_TYPE,
@@ -37,6 +37,10 @@ import {enableStableConcurrentModeAPIs} from 'shared/ReactFeatureFlags';
 
 const React = {
   Children: {
+    /**
+     * @ikki
+     * @map React.Children.map(props.children,c=>[c,[c,[c]]]) 返回的都是flat过后的数组[c,c,c]
+     */
     map,
     forEach,
     count,
@@ -44,6 +48,10 @@ const React = {
     only,
   },
 
+  /**
+   * @ikki
+   * @createRef 返回一个对象{current:null}
+   */
   createRef,
   Component,
   PureComponent,
@@ -68,6 +76,7 @@ const React = {
 };
 
 if (enableStableConcurrentModeAPIs) {
+  //ikki ConcurrentMode将组建包裹在<ConcurrentMode />内部会使得组件更新变成低优先级
   React.ConcurrentMode = REACT_CONCURRENT_MODE_TYPE;
   React.Profiler = REACT_PROFILER_TYPE;
 } else {

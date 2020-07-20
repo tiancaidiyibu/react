@@ -111,16 +111,17 @@ function defineRefPropWarningGetter(props, displayName) {
 const ReactElement = function(type, key, ref, self, source, owner, props) {
   const element = {
     // This tag allows us to uniquely identify this as a React Element
-    $$typeof: REACT_ELEMENT_TYPE,
+    //ikki $$typeof用于确定是否属于ReactElement
+    $$typeof: REACT_ELEMENT_TYPE,  
 
     // Built-in properties that belong on the element
-    type: type,
+    type: type, //ikki 用于判断如何创建节点
     key: key,
     ref: ref,
     props: props,
 
     // Record the component responsible for creating this element.
-    _owner: owner,
+    _owner: owner, 
   };
 
   if (__DEV__) {
@@ -169,9 +170,16 @@ const ReactElement = function(type, key, ref, self, source, owner, props) {
  * See https://reactjs.org/docs/react-api.html#createelement
  */
 export function createElement(type, config, children) {
+  /**
+   * @ikki
+   * @type :节点类型（div,Fn函数，class类等等），babel中判断传入字符串还是其他类型，通过组件开头是否大写来判断，这也就是为什么自定义组件必须大写开头的原因
+   * @config :对应组件中的props
+   * @children :对应该组件的子组件或者文字
+   */
   let propName;
 
   // Reserved names are extracted
+  
   const props = {};
 
   let key = null;
@@ -190,6 +198,7 @@ export function createElement(type, config, children) {
     self = config.__self === undefined ? null : config.__self;
     source = config.__source === undefined ? null : config.__source;
     // Remaining properties are added to a new props object
+    // ikki 将config中除了key,ref,source,selfd的其他键值对放入到props中
     for (propName in config) {
       if (
         hasOwnProperty.call(config, propName) &&
@@ -202,6 +211,8 @@ export function createElement(type, config, children) {
 
   // Children can be more than one argument, and those are transferred onto
   // the newly allocated props object.
+  // ikki 提取children（自己手写简版可以用es6的数组扩展运算符）
+  // ikki 将childArray放入到props的children中
   const childrenLength = arguments.length - 2;
   if (childrenLength === 1) {
     props.children = children;
@@ -219,10 +230,14 @@ export function createElement(type, config, children) {
   }
 
   // Resolve default props
+  // ikki 示例 class组件可以设置static 例如Class.defaultProps={name:1}
+  
   if (type && type.defaultProps) {
     const defaultProps = type.defaultProps;
+    // ikki for...in遍历defaultProps获取propName，来进行判断props时候已经含有propName
     for (propName in defaultProps) {
       if (props[propName] === undefined) {
+        // ikki props[propName]没有值，那么将defaultProps[propName]赋值给她
         props[propName] = defaultProps[propName];
       }
     }
@@ -241,14 +256,16 @@ export function createElement(type, config, children) {
       }
     }
   }
+
+  // ikki return调用ReactElement传入参数
   return ReactElement(
-    type,
-    key,
-    ref,
+    type,  //组件类型
+    key, //组件的key
+    ref, 
     self,
-    source,
-    ReactCurrentOwner.current,
-    props,
+    source,  
+    ReactCurrentOwner.current, //ikki 后续再去了解
+    props, //{props,children  }
   );
 }
 

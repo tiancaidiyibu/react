@@ -15,7 +15,9 @@ import warningWithoutStack from 'shared/warningWithoutStack';
 import warning from 'shared/warning';
 
 export function createContext<T>(
+  // ikki defaultValue接受一个默认值
   defaultValue: T,
+  //calculateChangedBits 用来计算新老context的变化的
   calculateChangedBits: ?(a: T, b: T) => number,
 ): ReactContext<T> {
   if (calculateChangedBits === undefined) {
@@ -31,7 +33,9 @@ export function createContext<T>(
       );
     }
   }
-
+  /**
+   * @context 返回一个context对象。包含了Provider，Consumer，$$typeof
+   */
   const context: ReactContext<T> = {
     $$typeof: REACT_CONTEXT_TYPE,
     _calculateChangedBits: calculateChangedBits,

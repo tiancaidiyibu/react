@@ -19,6 +19,11 @@ if (__DEV__) {
  * Base class helpers for the updating state of a component.
  */
 function Component(props, context, updater) {
+  /**
+   * @ikki
+   * @props 传入的props
+   * @updater 更新器,可以根据不同平台定制，例如Rn就是不同的
+   */
   this.props = props;
   this.context = context;
   // If a component has string refs, we will assign a different object later.
@@ -56,6 +61,7 @@ Component.prototype.isReactComponent = {};
  * @protected
  */
 Component.prototype.setState = function(partialState, callback) {
+  // ikki 判断partialState是对象还是函数，起到提醒作用，不重要的代码
   invariant(
     typeof partialState === 'object' ||
       typeof partialState === 'function' ||
@@ -63,6 +69,7 @@ Component.prototype.setState = function(partialState, callback) {
     'setState(...): takes an object of state variables to update or a ' +
       'function which returns an object of state variables.',
   );
+  //ikki 调用初始化中updater的enqueueSetState方法
   this.updater.enqueueSetState(this, partialState, callback, 'setState');
 };
 
