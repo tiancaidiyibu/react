@@ -109,7 +109,7 @@ function getContextForSubtree(
 
 /**
  * @ikki
- * @param {*} current fiberRoot
+ * @param {*} current rootfiber对象
  * @param {*} element  data tree
  * @param {*} expirationTime 过期时间
  * @param {*} callback 
@@ -156,7 +156,7 @@ function scheduleRootUpdate(
     );
     update.callback = callback;
   }
-  // ikki enqueueUpdate是把update加入到fiber对应的update队列中
+  // ikki enqueueUpdate是把update加入到fiber对应的enqueueUpdate中
   enqueueUpdate(current, update);
   // ikki 开始任务调度，开始更新
   scheduleWork(current, expirationTime);

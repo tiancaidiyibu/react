@@ -353,9 +353,15 @@ if (__DEV__ && replayFailedUnitOfWorkWithInvokeGuardedCallback) {
 }
 
 function resetStack() {
+  //  ikki 
+  // nextUnitOfWork 用于记录render阶段Fiber树遍历过程中下一个需要执行的节点。 在resetStack中分别被重置   他只会指向workInProgress
+  // nextUnitOfWork !== null 代表着之前正在更新是一个异步得任务，由于时间不够，它把执行权交给了浏览器，然后这个值记录的是下一个要执行的节点，
+  // 如果现在没有优先级更高的任务进来打断他，等浏览器有空了会继续执行nextUnitOfWork
   if (nextUnitOfWork !== null) {
-    let interruptedWork = nextUnitOfWork.return;
+    let interruptedWork = nextUnitOfWork.return; //interruptedWork 被打断的任务 = nextUnitOfWork.return
+    // 向上去找所有被打断的任务
     while (interruptedWork !== null) {
+      // 更高优先级的任务进来了，那么会重头开始更新，如果存在着nextUnitOfWork，那么会进行回退
       unwindInterruptedWork(interruptedWork);
       interruptedWork = interruptedWork.return;
     }
@@ -1621,9 +1627,9 @@ function retrySuspendedRoot(
     requestWork(root, rootExpirationTime);
   }
 }
-
+// 
 function scheduleWorkToRoot(fiber: Fiber, expirationTime): FiberRoot | null {
-  recordScheduleUpdate();
+  recordScheduleUpdate();  //ikki react用来记录更新流程所用的时间
 
   if (__DEV__) {
     if (fiber.tag === ClassComponent) {
@@ -1633,6 +1639,7 @@ function scheduleWorkToRoot(fiber: Fiber, expirationTime): FiberRoot | null {
   }
 
   // Update the source fiber's expiration time
+  // 产生更新fiber的expirationTime 
   if (
     fiber.expirationTime === NoWork ||
     fiber.expirationTime > expirationTime
@@ -1653,6 +1660,7 @@ function scheduleWorkToRoot(fiber: Fiber, expirationTime): FiberRoot | null {
   if (node === null && fiber.tag === HostRoot) {
     root = fiber.stateNode;
   } else {
+    // 向上寻找root 并且更新寻找到的每个节点的childExpirationTime
     while (node !== null) {
       alternate = node.alternate;
       if (
@@ -1682,13 +1690,15 @@ function scheduleWorkToRoot(fiber: Fiber, expirationTime): FiberRoot | null {
     }
   }
 
+  // 提示作用
   if (root === null) {
     if (__DEV__ && fiber.tag === ClassComponent) {
       warnAboutUpdateOnUnmounted(fiber);
     }
     return null;
   }
-
+  
+  // ikki 不看
   if (enableSchedulerTracing) {
     const interactions = __interactionsRef.current;
     if (interactions.size > 0) {
@@ -1723,28 +1733,43 @@ function scheduleWorkToRoot(fiber: Fiber, expirationTime): FiberRoot | null {
     }
   }
 
+  //  ikki 返回rootfiber的stateNode=>fiberRoot
   return root;
 }
 
+/**
+ *
+ * @ikki
+ * @param {Fiber} fiber 传入的fiber  render的话就是rootfiber setState的话就是对应的组件更新的fiber
+ * @param {ExpirationTime} expirationTime 过期时间
+ * @returns
+ */
 function scheduleWork(fiber: Fiber, expirationTime: ExpirationTime) {
+  // ikki
   const root = scheduleWorkToRoot(fiber, expirationTime);
   if (root === null) {
     return;
   }
 
+  // ikki isWorking用来标志是否当前有更新正在进行，不区分阶段
+  // nextRenderExpirationTime !== NoWork  代表着任务可能是异步，并且可能执行到一半了终止了，把执行权交给浏览器
+  // expirationTime < nextRenderExpirationTime 代表新的任务expirationTime高于正在做的
   if (
     !isWorking &&
     nextRenderExpirationTime !== NoWork &&
     expirationTime < nextRenderExpirationTime
   ) {
-    // This is an interruption. (Used for performance tracking.)
+    // This is an interruption. (Used for performance tracking.) 用来记录的，可以县不了解
     interruptedBy = fiber;
+    // resetStack 高优先级的任务打断了低优先的任务
     resetStack();
   }
+  //  markPendingPriorityLevel涉及到概念比较多，以后再看
   markPendingPriorityLevel(root, expirationTime);
   if (
     // If we're in the render phase, we don't need to schedule this root
     // for an update, because we'll do it before we exit...
+    //ikki isCommitting 用来标志是否处于commit阶段（就是fiber树更新出来后，进入渲染阶段）
     !isWorking ||
     isCommitting ||
     // ...unless this is a different root than the one we're rendering.
@@ -1753,6 +1778,7 @@ function scheduleWork(fiber: Fiber, expirationTime: ExpirationTime) {
     const rootExpirationTime = root.expirationTime;
     requestWork(root, rootExpirationTime);
   }
+  // ikki 用来防止组件更新过程中无限循环  state一直在改变
   if (nestedUpdateCount > NESTED_UPDATE_LIMIT) {
     // Reset this back to zero so subsequent updates don't throw.
     nestedUpdateCount = 0;
@@ -1974,14 +2000,23 @@ function requestCurrentTime() {
 
 // requestWork is called by the scheduler whenever a root receives an update.
 // It's up to the renderer to call renderRoot at some point in the future.
+/**
+ * @ikki
+ * @param {*} root 得到的root
+ * @param {*} expirationTime  经过一些列处理的ExpirationTime，记录任务的过期时间
+ */
 function requestWork(root: FiberRoot, expirationTime: ExpirationTime) {
   addRootToSchedule(root, expirationTime);
+  //  isRendering:说明循环已经开始 performWorkOnRoot开始设置为true，结束的时候设置为false，表示进入渲染阶段，这是包含render和commit阶段的。
   if (isRendering) {
     // Prevent reentrancy. Remaining work will be scheduled at the end of
     // the currently rendering batch.
     return;
   }
 
+  // 是否批量更新
+  // 在调用合成事件后，会进入另外一个函数batchedUpdates$1，使得isBatchingUpdates变成true，当内部事件结束以后才会恢复为false,
+  // 而在合成事件时间里面先包裹setTimeout的话，上下文会先变成setTimeout，而回调函数调用的时候上下文已经变成window了，isBatchingUpdates此时已经变回false
   if (isBatchingUpdates) {
     // Flush work at the end of the batch.
     if (isUnbatchingUpdates) {
@@ -1998,32 +2033,40 @@ function requestWork(root: FiberRoot, expirationTime: ExpirationTime) {
   if (expirationTime === Sync) {
     performSyncWork();
   } else {
+    // 异步调度
     scheduleCallbackWithExpirationTime(root, expirationTime);
   }
 }
 
+// firstScheduledRoot & lastScheduledRoot 用于存放有任务的所有root的单列表结构
+// 在findHighestPriorityRoot用来检索优先级最高的root
+// 在addRootToSchedule中会修改
 function addRootToSchedule(root: FiberRoot, expirationTime: ExpirationTime) {
   // Add the root to the schedule.
   // Check if this root is already part of the schedule.
+  // 如果root没有进入root的单列表结构则进行下面异步
   if (root.nextScheduledRoot === null) {
     // This root is not already scheduled. Add it.
+    // 当前更新对应的过期时间
     root.expirationTime = expirationTime;
     if (lastScheduledRoot === null) {
       firstScheduledRoot = lastScheduledRoot = root;
       root.nextScheduledRoot = root;
     } else {
+      // 如果当前有任务在调度，那么将root插入到root的单列表结构最后一位
       lastScheduledRoot.nextScheduledRoot = root;
       lastScheduledRoot = root;
       lastScheduledRoot.nextScheduledRoot = firstScheduledRoot;
     }
   } else {
-    // This root is already scheduled, but its priority may have increased.
-    const remainingExpirationTime = root.expirationTime;
+    // This root is already scheduled, but its priority may have increased. （这个根目录已经被调度，但是它的优先级可能已经增加。）
+    const remainingExpirationTime = root.expirationTime; //获取目前的过期时间
     if (
       remainingExpirationTime === NoWork ||
       expirationTime < remainingExpirationTime
     ) {
       // Update the priority.
+      // 将root.expirationTime 设置成优先级最高的那个
       root.expirationTime = expirationTime;
     }
   }
