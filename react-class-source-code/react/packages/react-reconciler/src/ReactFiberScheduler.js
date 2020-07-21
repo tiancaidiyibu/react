@@ -1495,10 +1495,14 @@ function computeUniqueAsyncExpiration(): ExpirationTime {
 
 function computeExpirationForFiber(currentTime: ExpirationTime, fiber: Fiber) {
   let expirationTime;
+  // ikki expirationContext默认是NoWork
+  // 但经过强制改变后，会发生变化，例如expirationContext =computeAsyncExpiration(currentTime)或者 expirationContext =Sync
   if (expirationContext !== NoWork) {
     // An explicit expiration context was set;
     expirationTime = expirationContext;
-  } else if (isWorking) {
+  } 
+  // ikki 是都正在任务中或者正在提交
+  else if (isWorking) {
     if (isCommitting) {
       // Updates that occur during the commit phase should have sync priority
       // by default.
@@ -1511,6 +1515,8 @@ function computeExpirationForFiber(currentTime: ExpirationTime, fiber: Fiber) {
   } else {
     // No explicit expiration context was set, and we're not currently
     // performing work. Calculate a new expiration time.
+    // ikki 没有外部强制的情况下
+    // 只有mode处于ConcurrentMode下才会进行expirationTime计算再异步更新，不处于的话，进行Sync同步更新
     if (fiber.mode & ConcurrentMode) {
       if (isBatchingInteractiveUpdates) {
         // This is an interactive update
@@ -1828,7 +1834,9 @@ let lastCommittedRootDuringThisBatch: FiberRoot | null = null;
 const timeHeuristicForUnitOfWork = 1;
 
 function recomputeCurrentRendererTime() {
+  // ikki 当前时间戳-js bundel打包完成的时间戳（固定的）
   const currentTimeMs = now() - originalStartTimeMs;
+  // currentRendererTime = ((currentTimeMs/10)|0) +2
   currentRendererTime = msToExpirationTime(currentTimeMs);
 }
 
@@ -1939,6 +1947,7 @@ function requestCurrentTime() {
   // But the scheduler time can only be updated if there's no pending work, or
   // if we know for certain that we're not in the middle of an event.
 
+  // ikki已经进入渲染阶段  render还未进入
   if (isRendering) {
     // We're already rendering. Return the most recently read time.
     return currentSchedulerTime;
@@ -2421,7 +2430,8 @@ function flushSync<A, R>(fn: (a: A) => R, a: A): R {
     performSyncWork();
   }
 }
-
+// ikki大部分 事件产生的更新都会进入这里
+//isBatchingInteractiveUpdates = true;
 function interactiveUpdates<A, B, R>(fn: (A, B) => R, a: A, b: B): R {
   if (isBatchingInteractiveUpdates) {
     return fn(a, b);

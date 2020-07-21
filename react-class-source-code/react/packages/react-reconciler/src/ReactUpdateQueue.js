@@ -128,10 +128,10 @@ export type UpdateQueue<State> = {
   lastCapturedEffect: Update<State> | null,
 };
 
-export const UpdateState = 0;
-export const ReplaceState = 1;
-export const ForceUpdate = 2;
-export const CaptureUpdate = 3;
+export const UpdateState = 0; //ikki 更新state
+export const ReplaceState = 1; //替代state
+export const ForceUpdate = 2; //强制更新
+export const CaptureUpdate = 3; //错误捕获后生成update
 
 // Global state that is reset at the beginning of calling `processUpdateQueue`.
 // It should only be read right after calling `processUpdateQueue`, via
@@ -148,16 +148,20 @@ if (__DEV__) {
     currentlyProcessingQueue = null;
   };
 }
-
+/**
+ * @ikki
+ * @param {*} baseState  上一次渲染的state
+ */
 export function createUpdateQueue<State>(baseState: State): UpdateQueue<State> {
   const queue: UpdateQueue<State> = {
-    baseState,
-    firstUpdate: null,
-    lastUpdate: null,
-    firstCapturedUpdate: null,
-    lastCapturedUpdate: null,
-    firstEffect: null,
-    lastEffect: null,
+    baseState, // 每次操作完更新之后的`state`
+    firstUpdate: null, // 队列中的第一个`Update`
+    lastUpdate: null, // 队列中的最后一个`Update`
+    firstCapturedUpdate: null, // 第一个捕获类型的`Update`
+    lastCapturedUpdate: null,  // 最后一个捕获类型的`Update`
+    firstEffect: null, // 第一个`side effect`
+    lastEffect: null, // 最后一个`side effect`
+    // 第一个和最后一个捕获产生的`side effect`
     firstCapturedEffect: null,
     lastCapturedEffect: null,
   };
@@ -185,20 +189,30 @@ function cloneUpdateQueue<State>(
   };
   return queue;
 }
-
+/**
+ * @ikki 
+ * @param {*} expirationTime  过期时间
+ */
 export function createUpdate(expirationTime: ExpirationTime): Update<*> {
   return {
+    //  更新的过期时间
     expirationTime: expirationTime,
-
-    tag: UpdateState,
-    payload: null,
+    
+    tag: UpdateState, //对应标识符0 | 1 | 2 | 3,
+    // 更新内容，比如`setState`接收的第一个参数 比如首次render传入的data tree
+    payload: null, 
     callback: null,
 
-    next: null,
-    nextEffect: null,
+    next: null, // 指向下一个更新
+    nextEffect: null, // 指向下一个`side effect`
   };
 }
 
+/**
+ * @ikki
+ * @param {*} queue 
+ * @param {*} update update对象
+ */
 function appendUpdateToQueue<State>(
   queue: UpdateQueue<State>,
   update: Update<State>,
@@ -206,23 +220,35 @@ function appendUpdateToQueue<State>(
   // Append the update to the end of the list.
   if (queue.lastUpdate === null) {
     // Queue is empty
+    // ikki 将update对象放入到queueUpdate开头
     queue.firstUpdate = queue.lastUpdate = update;
   } else {
+    // ikki 将update对象放入到queueUpdate最后
     queue.lastUpdate.next = update;
     queue.lastUpdate = update;
   }
 }
-
+/**
+ * @ikki
+ * @param {*} fiber fiberRoot.current
+ * @param {*} update 
+ */
 export function enqueueUpdate<State>(fiber: Fiber, update: Update<State>) {
   // Update queues are created lazily.
+  // ikki 在Fiber树更新的过程中，每个Fiber都会有一个跟其对应的Fiber
+  // 我们称他为`current <==> workInProgress`
+  // 在渲染完成之后他们会交换位置
   const alternate = fiber.alternate;
   let queue1;
   let queue2;
   if (alternate === null) {
     // There's only one fiber.
+    // updateQueue 该Fiber对应的组件产生的Update会存放在这个updateQueue队列里面
     queue1 = fiber.updateQueue;
     queue2 = null;
     if (queue1 === null) {
+      // ikki 创建一个新的updateQueue
+      // memoizedState是上一次渲染的state
       queue1 = fiber.updateQueue = createUpdateQueue(fiber.memoizedState);
     }
   } else {
@@ -251,6 +277,7 @@ export function enqueueUpdate<State>(fiber: Fiber, update: Update<State>) {
   }
   if (queue2 === null || queue1 === queue2) {
     // There's only a single queue.
+    // 将update对象放入到queue1这个updateQueue,正好映射到fiber.updateQueue
     appendUpdateToQueue(queue1, update);
   } else {
     // There are two queues. We need to append the update to both queues,

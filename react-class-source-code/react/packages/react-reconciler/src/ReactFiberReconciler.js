@@ -106,6 +106,14 @@ function getContextForSubtree(
   return parentContext;
 }
 
+
+/**
+ * @ikki
+ * @param {*} current fiberRoot
+ * @param {*} element  data tree
+ * @param {*} expirationTime 过期时间
+ * @param {*} callback 
+ */
 function scheduleRootUpdate(
   current: Fiber,
   element: ReactNodeList,
@@ -129,7 +137,10 @@ function scheduleRootUpdate(
       );
     }
   }
-
+  //ikki update是用来标记react应用需要更新的地点
+  // 用于记录组件状态的改变
+  // 存放在updateQueue中
+  // 多个update可以同时存在
   const update = createUpdate(expirationTime);
   // Caution: React DevTools currently depends on this property
   // being called "element".
@@ -145,12 +156,20 @@ function scheduleRootUpdate(
     );
     update.callback = callback;
   }
+  // ikki enqueueUpdate是把update加入到fiber对应的update队列中
   enqueueUpdate(current, update);
-
+  // ikki 开始任务调度，开始更新
   scheduleWork(current, expirationTime);
   return expirationTime;
 }
-
+/**
+ * @ikki
+ * @param {*} element data tree
+ * @param {*} container fiberRoot
+ * @param {*} parentComponent  null
+ * @param {*} expirationTime  过期时间
+ * @param {*} callback 封装过得cb
+ */
 export function updateContainerAtExpirationTime(
   element: ReactNodeList,
   container: OpaqueRoot,
@@ -159,6 +178,7 @@ export function updateContainerAtExpirationTime(
   callback: ?Function,
 ) {
   // TODO: If this is a nested container, this won't be the root.
+  // ikki 对用fiberRoot中的current，也就是fiber对象
   const current = container.current;
 
   if (__DEV__) {
@@ -173,6 +193,7 @@ export function updateContainerAtExpirationTime(
     }
   }
 
+  //ikki 下面的container.context先不看 默认没有
   const context = getContextForSubtree(parentComponent);
   if (container.context === null) {
     container.context = context;
@@ -271,16 +292,24 @@ export function createContainer(
 ): OpaqueRoot {
   return createFiberRoot(containerInfo, isConcurrent, hydrate);
 }
-
+/**
+ *
+ *
+ * @ikki
+ * @param {ReactNodeList} element data tree
+ * @param {OpaqueRoot} container fiberRoot
+ * @param {?React$Component<any, any>} parentComponent   null
+ * @param {?Function} callback  封装过的cb
+ */
 export function updateContainer(
   element: ReactNodeList,
   container: OpaqueRoot,
   parentComponent: ?React$Component<any, any>,
   callback: ?Function,
 ): ExpirationTime {
-  const current = container.current;
-  const currentTime = requestCurrentTime();
-  const expirationTime = computeExpirationForFiber(currentTime, current);
+  const current = container.current; 
+  const currentTime = requestCurrentTime(); //ikki 获取当前时间
+  const expirationTime = computeExpirationForFiber(currentTime, current);  //ikki 计算过期时间
   return updateContainerAtExpirationTime(
     element,
     container,

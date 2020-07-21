@@ -331,14 +331,26 @@ ReactWork.prototype._onCommit = function(): void {
   }
 };
 
+/**
+ * @ikki
+ * @param {*} container  传入的真实节点
+ * @param {*} isConcurrent  flase
+ * @param {*} hydrate 是否为服务端渲染
+ */
 function ReactRoot(
   container: Container,
   isConcurrent: boolean,
   hydrate: boolean,
 ) {
+  // ikki 创建了fiberRoot（整个应用的节点） 赋值给this._internalRoot
   const root = DOMRenderer.createContainer(container, isConcurrent, hydrate);
   this._internalRoot = root;
 }
+/**
+ * @ikki
+ * @children data tree
+ * @callback cb
+ */
 ReactRoot.prototype.render = function(
   children: ReactNodeList,
   callback: ?() => mixed,
@@ -461,13 +473,20 @@ ReactGenericBatching.setBatchingImplementation(
 
 let warnedAboutHydrateAPI = false;
 
+/**
+ * @ikki
+ * @param {*} container 传入的真实节点
+ * @param {*} forceHydrate 
+ */
 function legacyCreateRootFromDOMContainer(
   container: DOMContainer,
   forceHydrate: boolean,
 ): Root {
+  // ikki shouldHydrate显示是否是服务端渲染
   const shouldHydrate =
     forceHydrate || shouldHydrateDueToLegacyHeuristic(container);
   // First clear any existing content.
+  // ikki第一次渲染shouldHydrate=false，把之前存在的节点全部删除 
   if (!shouldHydrate) {
     let warned = false;
     let rootSibling;
@@ -501,11 +520,19 @@ function legacyCreateRootFromDOMContainer(
       );
     }
   }
-  // Legacy roots are not async by default.
+  // Legacy roots are not async by default.（默认情况下，根节点渲染不是异步的）
   const isConcurrent = false;
+  
   return new ReactRoot(container, isConcurrent, shouldHydrate);
 }
-
+/**
+ * @ikki
+ * @param {*} parentComponent 目前理解为父组件 null
+ * @param {*} children data tree
+ * @param {*} container 真实节点
+ * @param {*} forceHydrate 判断是否为服务端渲染 render传入的是false hydrate传入的是true
+ * @param {*} callback render传入的回调函数
+ */
 function legacyRenderSubtreeIntoContainer(
   parentComponent: ?React$Component<any, any>,
   children: ReactNodeList,
@@ -525,13 +552,16 @@ function legacyRenderSubtreeIntoContainer(
 
   // TODO: Without `any` type, Flow says "Property cannot be accessed on any
   // member of intersection type." Whyyyyyy.
-  let root: Root = (container._reactRootContainer: any);
+  //ikki 判断传入的真实节点是否含有_reactRootContaine,第一次肯定是没有的，需要下面去创建
+  let root: Root = (container._reactRootContainer: any);  
   if (!root) {
     // Initial mount
+    // ikki 创建的FiberRoot对象对象赋值给container._reactRootContainer
     root = container._reactRootContainer = legacyCreateRootFromDOMContainer(
       container,
       forceHydrate,
     );
+    // ikki 判断是否有cb
     if (typeof callback === 'function') {
       const originalCallback = callback;
       callback = function() {
@@ -635,6 +665,12 @@ const ReactDOM: Object = {
     );
   },
 
+  /**
+   * @ikki
+   * @param {*} element data tree
+   * @param {*} container 真实节点
+   * @param {*} callback 回调函数
+   */
   render(
     element: React$Element<any>,
     container: DOMContainer,
@@ -644,7 +680,7 @@ const ReactDOM: Object = {
       null,
       element,
       container,
-      false,
+      false,  
       callback,
     );
   },

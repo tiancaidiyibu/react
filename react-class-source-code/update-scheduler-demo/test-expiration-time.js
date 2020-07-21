@@ -67,6 +67,6 @@ function computeInteractiveExpiration(currentTime) {
   )
 }
 
-const TEST_NUM = 10019
+const TEST_NUM = 10022
 console.log(computeInteractiveExpiration(TEST_NUM))
 console.log(computeAsyncExpiration(TEST_NUM))
