@@ -247,14 +247,20 @@ function ChildReconciler(shouldTrackSideEffects) {
     // deletions, so we can just append the deletion to the list. The remaining
     // effects aren't added until the complete phase. Once we implement
     // resuming, this may not be true.
+    // lastEffect，firstEffect其实就是一个链表结构
+    // 获取workInProcess的子树中最后一个side effect
     const last = returnFiber.lastEffect;
     if (last !== null) {
+      // 如果最后一个副作用存在，那么在其后面再加上一个删除的节点fiber，并且将workInProcess的子树中最后一个副作用指向childToDelete
       last.nextEffect = childToDelete;
       returnFiber.lastEffect = childToDelete;
     } else {
+      // 如果最后一个副作用不存在，那么将workInProcess的子树中最后一个副作用和第一个的都指向childToDelete
       returnFiber.firstEffect = returnFiber.lastEffect = childToDelete;
     }
+    // childToDelete的下一个副作用为null
     childToDelete.nextEffect = null;
+    // 
     childToDelete.effectTag = Deletion;
   }
 
@@ -262,6 +268,7 @@ function ChildReconciler(shouldTrackSideEffects) {
     returnFiber: Fiber,
     currentFirstChild: Fiber | null,
   ): null {
+    // 第一次渲染没有子节点的
     if (!shouldTrackSideEffects) {
       // Noop.
       return null;
@@ -270,7 +277,9 @@ function ChildReconciler(shouldTrackSideEffects) {
     // TODO: For the shouldClone case, this could be micro-optimized a bit by
     // assuming that after the first child we've already added everything.
     let childToDelete = currentFirstChild;
+    // 挨个查找需要删除的子节点，知道没有找到为止
     while (childToDelete !== null) {
+      // 只更新fiberTree,不操作dom，操作dom的流程放在commit阶段，而需要更新的属性都放在deleteChild方法产生的副作用中
       deleteChild(returnFiber, childToDelete);
       childToDelete = childToDelete.sibling;
     }
@@ -772,11 +781,14 @@ function ChildReconciler(shouldTrackSideEffects) {
     let nextOldFiber = null;
     for (; oldFiber !== null && newIdx < newChildren.length; newIdx++) {
       if (oldFiber.index > newIdx) {
+        // 如果老的节点fiber的index大于当前index，则下一个将老的节点赋值给下一个老节点，现在老节点设置为null
         nextOldFiber = oldFiber;
         oldFiber = null;
       } else {
+        // 将下一个老节点设置成当前老节点的下一个兄弟
         nextOldFiber = oldFiber.sibling;
       }
+      // 对比新旧children相同index的对象的key是否相等，如果是，返回该对象，如果不是，返回null。也就是逐个对比两个数组，如果相等则继续，如果有任何一个不等，那么跳出循环。
       const newFiber = updateSlot(
         returnFiber,
         oldFiber,
@@ -1078,9 +1090,9 @@ function ChildReconciler(shouldTrackSideEffects) {
   }
 
   function reconcileSingleTextNode(
-    returnFiber: Fiber,
-    currentFirstChild: Fiber | null,
-    textContent: string,
+    returnFiber: Fiber, //workInProcess
+    currentFirstChild: Fiber | null, //current.child
+    textContent: string, //’ ‘+ReactElement
     expirationTime: ExpirationTime,
   ): Fiber {
     // There's no need to check for keys on text nodes since we don't have a
@@ -1106,17 +1118,22 @@ function ChildReconciler(shouldTrackSideEffects) {
   }
 
   function reconcileSingleElement(
-    returnFiber: Fiber,
-    currentFirstChild: Fiber | null,
-    element: ReactElement,
+    returnFiber: Fiber, //workInProcess
+    currentFirstChild: Fiber | null, //current.child
+    element: ReactElement, //Component(workInProcess.type) => ReactElement
     expirationTime: ExpirationTime,
   ): Fiber {
     const key = element.key;
     let child = currentFirstChild;
+    // 第一个while循环的目的明显就是找到老的children和新的children中第一个key和节点类型相同的节点，直接复用这个节点，然后删除老的children中其他的
+    // 如果找了一圈没发现，那么就把老的children都删了，重新为新的children创建节点。
     while (child !== null) {
       // TODO: If key === null and child.key === null, then this only applies to
       // the first item in the list.
+      // 如果老的child key 等于新的key
       if (child.key === key) {
+        // 如果老的tag等于Fragment则判断 新的type是不是等于REACT_FRAGMENT_TYPE
+        // 如果老的tag不等于Fragment则判断 老的type是不是等于新ReactElement的type
         if (
           child.tag === Fragment
             ? element.type === REACT_FRAGMENT_TYPE
@@ -1215,6 +1232,13 @@ function ChildReconciler(shouldTrackSideEffects) {
   // This API will tag the children with the side-effect of the reconciliation
   // itself. They will be added to the side-effect list as we pass through the
   // children and the parent.
+  /**
+   * 
+   * @param {*} returnFiber workInProgress
+   * @param {*} currentFirstChild current.child||null
+   * @param {*} newChild  nextChildren也就是新计算出来的children 要么是数组，要么是字符串，要么是对象，要么是数字
+   * @param {*} expirationTime 
+   */
   function reconcileChildFibers(
     returnFiber: Fiber,
     currentFirstChild: Fiber | null,
@@ -1235,10 +1259,12 @@ function ChildReconciler(shouldTrackSideEffects) {
       newChild.type === REACT_FRAGMENT_TYPE &&
       newChild.key === null;
     if (isUnkeyedTopLevelFragment) {
+      // 如果是<></>的话，则直接赋值newChild为之前的下一个props。child
       newChild = newChild.props.children;
     }
 
     // Handle object types
+    // 是个reactElement
     const isObject = typeof newChild === 'object' && newChild !== null;
 
     if (isObject) {
@@ -1263,6 +1289,7 @@ function ChildReconciler(shouldTrackSideEffects) {
           );
       }
     }
+
 
     if (typeof newChild === 'string' || typeof newChild === 'number') {
       return placeSingleChild(
@@ -1294,6 +1321,7 @@ function ChildReconciler(shouldTrackSideEffects) {
     }
 
     if (isObject) {
+      // 不符合上面要求，抛错
       throwOnInvalidObjectType(returnFiber, newChild);
     }
 

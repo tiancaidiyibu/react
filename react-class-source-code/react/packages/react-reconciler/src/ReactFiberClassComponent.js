@@ -560,7 +560,7 @@ function constructClassInstance(
       new ctor(props, context); // eslint-disable-line no-new
     }
   }
-
+  // 相当于 new 了一个 workInProcess.type
   const instance = new ctor(props, context);
   const state = (workInProgress.memoizedState =
     instance.state !== null && instance.state !== undefined

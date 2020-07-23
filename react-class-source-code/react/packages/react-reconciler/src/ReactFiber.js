@@ -285,10 +285,10 @@ function FiberNode(
 // 5) It should be easy to port this to a C struct and keep a C implementation
 //    compatible.
 const createFiber = function(
-  tag: WorkTag,
-  pendingProps: mixed,
-  key: null | string,
-  mode: TypeOfMode,
+  tag: WorkTag,  //Fragment
+  pendingProps: mixed,  //element.props.children
+  key: null | string, //element.key
+  mode: TypeOfMode, //workInProcess.mode
 ): Fiber {
   // $FlowFixMe: the shapes are exact here but Flow doesn't like constructors
   return new FiberNode(tag, pendingProps, key, mode);
@@ -412,9 +412,9 @@ export function createHostRootFiber(isConcurrent: boolean): Fiber {
 }
 
 export function createFiberFromTypeAndProps(
-  type: any, // React$ElementType
+  type: any, // React$ElementType  div或这class组件或者func
   key: null | string,
-  pendingProps: any,
+  pendingProps: any,  //props
   owner: null | Fiber,
   mode: TypeOfMode,
   expirationTime: ExpirationTime,
@@ -518,15 +518,15 @@ export function createFiberFromTypeAndProps(
 }
 
 export function createFiberFromElement(
-  element: ReactElement,
-  mode: TypeOfMode,
+  element: ReactElement,  //ReactElement
+  mode: TypeOfMode,  
   expirationTime: ExpirationTime,
 ): Fiber {
   let owner = null;
   if (__DEV__) {
     owner = element._owner;
   }
-  const type = element.type;
+  const type = element.type; 
   const key = element.key;
   const pendingProps = element.props;
   const fiber = createFiberFromTypeAndProps(
@@ -545,10 +545,10 @@ export function createFiberFromElement(
 }
 
 export function createFiberFromFragment(
-  elements: ReactFragment,
-  mode: TypeOfMode,
+  elements: ReactFragment, //element.props.children
+  mode: TypeOfMode, //workInProcess.mode
   expirationTime: ExpirationTime,
-  key: null | string,
+  key: null | string, //element.key
 ): Fiber {
   const fiber = createFiber(Fragment, elements, key, mode);
   fiber.expirationTime = expirationTime;

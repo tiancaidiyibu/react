@@ -125,12 +125,20 @@ if (__DEV__) {
   didWarnAboutFunctionRefs = {};
 }
 
+/**
+ * @ikki
+ * @param {*} current 之前的fiber
+ * @param {*} workInProgress 新的fiber
+ * @param {*} nextChildren  Component()后的reactElement
+ * @param {*} renderExpirationTime 
+ */
 export function reconcileChildren(
-  current: Fiber | null,
+  current: Fiber | null, 
   workInProgress: Fiber,
   nextChildren: any,
   renderExpirationTime: ExpirationTime,
 ) {
+  // 判断是否一次渲染  等于的话就是第一次渲染
   if (current === null) {
     // If this is a fresh new component that hasn't been rendered yet, we
     // won't update its child set by applying minimal side-effects. Instead,
@@ -394,6 +402,14 @@ function markRef(current: Fiber | null, workInProgress: Fiber) {
   }
 }
 
+/**
+ * 
+ * @param {*} current 之前的fiber
+ * @param {*} workInProgress 更新的fiber
+ * @param {*} Component workInProgress.type
+ * @param {*} nextProps workInProgress.pendingProps
+ * @param {*} renderExpirationTime 
+ */
 function updateFunctionComponent(
   current,
   workInProgress,
@@ -445,6 +461,7 @@ function updateClassComponent(
   }
   prepareToReadContext(workInProgress, renderExpirationTime);
 
+  // classComp通过new获取的对象
   const instance = workInProgress.stateNode;
   let shouldUpdate;
   if (instance === null) {
