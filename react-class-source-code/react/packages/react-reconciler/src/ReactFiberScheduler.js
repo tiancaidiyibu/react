@@ -1058,7 +1058,7 @@ function completeUnitOfWork(workInProgress: Fiber): Fiber | null {
   // eslint-disable-next-line no-unreachable
   return null;
 }
-
+// workInProgress是fiberRoot的fiber
 function performUnitOfWork(workInProgress: Fiber): Fiber | null {
   // The current, flushed, state of this fiber is the alternate.
   // Ideally nothing should rely on this, but relying on it here
@@ -1084,7 +1084,7 @@ function performUnitOfWork(workInProgress: Fiber): Fiber | null {
     if (workInProgress.mode & ProfileMode) {
       startProfilerTimer(workInProgress);
     }
-
+    // beginWork更新完一个节点吼会返回下一个节点赋值给next
     next = beginWork(current, workInProgress, nextRenderExpirationTime);
     workInProgress.memoizedProps = workInProgress.pendingProps;
 
@@ -1122,6 +1122,7 @@ function performUnitOfWork(workInProgress: Fiber): Fiber | null {
 }
 
 function workLoop(isYieldy) {
+  // isYieldy是否可中断
   if (!isYieldy) {
     // Flush work without yielding
     while (nextUnitOfWork !== null) {
@@ -1129,12 +1130,21 @@ function workLoop(isYieldy) {
     }
   } else {
     // Flush asynchronous work until the deadline runs out of time.
+    // 刷新异步工作，直到截止日期过期。
     while (nextUnitOfWork !== null && !shouldYield()) {
       nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
     }
   }
 }
-
+/**
+ * 
+ * @param {*} root FiberRoot
+ * @param {*} isYieldy  是否可打断
+ * @param {*} isExpired 是否超时
+ */
+// 调用workloop进行循环单元更新
+// 捕获错误并处理
+// 走完流程进行善后
 function renderRoot(
   root: FiberRoot,
   isYieldy: boolean,
@@ -1153,14 +1163,18 @@ function renderRoot(
   // Check if we're starting from a fresh stack, or if we're resuming from
   // previously yielded work.
   if (
+    // 这个条件就是  之前执行的异步任务很可能被其他高优先的打断了
     expirationTime !== nextRenderExpirationTime ||
     root !== nextRoot ||
     nextUnitOfWork === null
   ) {
     // Reset the stack and start working from the root.
+    // 先进行清空，回滚状态
     resetStack();
     nextRoot = root;
     nextRenderExpirationTime = expirationTime;
+    // createWorkInProgress就是把当前的rootfiber拷贝了一份，生成WorkInProgress，因为不能直接在当前对象上操作会影响
+    // WorkInProgress真正操作的是这个
     nextUnitOfWork = createWorkInProgress(
       nextRoot.current,
       null,
@@ -1224,8 +1238,10 @@ function renderRoot(
 
   startWorkLoopTimer(nextUnitOfWork);
 
+
   do {
     try {
+      // 初始化结束后 执行workLoop
       workLoop(isYieldy);
     } catch (thrownValue) {
       if (nextUnitOfWork === null) {
@@ -1741,11 +1757,11 @@ function scheduleWorkToRoot(fiber: Fiber, expirationTime): FiberRoot | null {
  *
  * @ikki
  * @param {Fiber} fiber 传入的fiber  render的话就是rootfiber setState的话就是对应的组件更新的fiber
- * @param {ExpirationTime} expirationTime 过期时间
+ * @param {ExpirationTime}  过期时间
  * @returns
  */
 function scheduleWork(fiber: Fiber, expirationTime: ExpirationTime) {
-  // ikki
+  // ikki 获取fiberRoot，并且将查找到的childExpirationTime更新
   const root = scheduleWorkToRoot(fiber, expirationTime);
   if (root === null) {
     return;
@@ -1870,6 +1886,7 @@ function scheduleCallbackWithExpirationTime(
   root: FiberRoot,
   expirationTime: ExpirationTime,
 ) {
+  // callbackExpirationTime 记录请求ReactScheduler的时候用的过期时间，如果在一次调度期间有新的调度请求进来了，而且优先级更高，那么需要取消上一次请求，如果更低则无需再次请求调度。
   if (callbackExpirationTime !== NoWork) {
     // A callback is already scheduled. Check its expiration time (timeout).
     if (expirationTime > callbackExpirationTime) {
@@ -1879,6 +1896,7 @@ function scheduleCallbackWithExpirationTime(
       if (callbackID !== null) {
         // Existing callback has insufficient timeout. Cancel and schedule a
         // new one.
+        // 取消掉来的callbackExpirationTime，直接进行新的expirationTime
         cancelDeferredCallback(callbackID);
       }
     }
@@ -1887,10 +1905,15 @@ function scheduleCallbackWithExpirationTime(
     startRequestCallbackTimer();
   }
 
+  // 
   callbackExpirationTime = expirationTime;
+  // 计算出当前时间-js加载进来的时间
   const currentMs = now() - originalStartTimeMs;
+  // 计算出expirationTime转成ms的值
   const expirationTimeMs = expirationTimeToMs(expirationTime);
+  // 计算出将来过期时间-当前时间的时间差
   const timeout = expirationTimeMs - currentMs;
+  // 
   callbackID = scheduleDeferredCallback(performAsyncWork, {timeout});
 }
 
@@ -2049,6 +2072,7 @@ function addRootToSchedule(root: FiberRoot, expirationTime: ExpirationTime) {
     // This root is not already scheduled. Add it.
     // 当前更新对应的过期时间
     root.expirationTime = expirationTime;
+    // lastScheduledRoot === null 代表目前单列表结构中没有任务在调度
     if (lastScheduledRoot === null) {
       firstScheduledRoot = lastScheduledRoot = root;
       root.nextScheduledRoot = root;
@@ -2139,21 +2163,33 @@ function findHighestPriorityRoot() {
   nextFlushedRoot = highestPriorityRoot;
   nextFlushedExpirationTime = highestPriorityWork;
 }
-
+/**
+ * @ikki 
+ * @param {*} dl  deadline
+ */
 function performAsyncWork(dl) {
+  // deadline.didTimeout 是reactSchedule循环判断一个任务的过期时间是否到了，如果到了代表就是过期任务,立马执行
   if (dl.didTimeout) {
     // The callback timed out. That means at least one update has expired.
     // Iterate through the root schedule. If they contain expired work, set
     // the next render expiration time to the current time. This has the effect
     // of flushing all expired work in a single batch, instead of flushing each
     // level one at a time.
+    // 如果firstScheduledRoot 单任务链接头不是空
     if (firstScheduledRoot !== null) {
+      // 计算时间，可以忽略
       recomputeCurrentRendererTime();
+      // 获取单任务列表的第一个fiberRoot
       let root: FiberRoot = firstScheduledRoot;
+      // 如果
       do {
+        // didExpireAtExpirationTime用来标记在root节点上的变量
         didExpireAtExpirationTime(root, currentRendererTime);
         // The root schedule is circular, so this is never null.
+        // 遍历下一个root，直到最后一个root指向firstScheduledRoot才停止
+        // firstScheduledRoot和lastScheduledRoot是个管状结构，最后一个指向firstScheduledRoot
         root = (root.nextScheduledRoot: any);
+        
       } while (root !== firstScheduledRoot);
     }
   }
@@ -2169,6 +2205,7 @@ function performWork(minExpirationTime: ExpirationTime, dl: Deadline | null) {
 
   // Keep working on roots until there's no more work, or until we reach
   // the deadline.
+  // 首先要通过findHighestPriorityRoot找到下一个需要操作的root，会设置两个全局变量
   findHighestPriorityRoot();
 
   if (deadline !== null) {
@@ -2182,10 +2219,16 @@ function performWork(minExpirationTime: ExpirationTime, dl: Deadline | null) {
     }
 
     while (
+      // 下一个输出节点不是null，并且过期时间不是NoWork
       nextFlushedRoot !== null &&
       nextFlushedExpirationTime !== NoWork &&
       (minExpirationTime === NoWork ||
+        //  一般来说minExpirationTime应该就等于nextFlushedExpirationTime因为他们来自同一个root
         minExpirationTime >= nextFlushedExpirationTime) &&
+        // deadlineDidExpire是用来判断时间片是否到期的，也就是deadline中设置的
+        // currentRendererTime >= nextFlushedExpirationTime
+        // 当前渲染时间是否大于nextFlushedExpirationTime，也就是判断任务是否已经超时了了，
+        // 如果超时了，根据下面调用performWorkOnRoot的参数中有一个currentRendererTime >= nextFlushedExpirationTime，也就是这种情况下为true，代表的意思是同步执行任务不再判断是否时间片到期。
       (!deadlineDidExpire || currentRendererTime >= nextFlushedExpirationTime)
     ) {
       performWorkOnRoot(
@@ -2198,13 +2241,20 @@ function performWork(minExpirationTime: ExpirationTime, dl: Deadline | null) {
       currentSchedulerTime = currentRendererTime;
     }
   } else {
+    // performSyncWork只会执行 root.ExpirationTime = sync的任务
     while (
+      // 下一个输出节点不是null，并且过期时间不是NoWork
+      // nextFlushedExpirationTime是在findHighestPriorityRoot阶段读取出来的root.expirationTime
       nextFlushedRoot !== null &&
       nextFlushedExpirationTime !== NoWork &&
+      // 过期时间是nowork 或者 过期时间sync=1大于等于下一个输出节点的过期时间，那只有nowork或者sync
+      // 一般来说minExpirationTime应该就等于nextFlushedExpirationTime因为他们来自同一个root
       (minExpirationTime === NoWork ||
         minExpirationTime >= nextFlushedExpirationTime)
     ) {
+      // performWorkOnRoot 执行root节点对应的任务，执行后使得root.ExpirationTime置空
       performWorkOnRoot(nextFlushedRoot, nextFlushedExpirationTime, true);
+      // 再到下一个最高优先级的任务root
       findHighestPriorityRoot();
     }
   }
@@ -2276,6 +2326,12 @@ function finishRendering() {
   }
 }
 
+/**
+ * @ikki
+ * @param {*} root 要执行的fiberroot
+ * @param {*} expirationTime fiberroot对应的过期时间
+ * @param {*} isExpired 是否已经过期
+ */
 function performWorkOnRoot(
   root: FiberRoot,
   expirationTime: ExpirationTime,
@@ -2290,17 +2346,22 @@ function performWorkOnRoot(
   isRendering = true;
 
   // Check if this is async work or sync/expired work.
+  // deadline === null是sync情况
+  // isExpired只要是过期的
   if (deadline === null || isExpired) {
     // Flush work without yielding.
     // TODO: Non-yieldy work does not necessarily imply expired work. A renderer
     // may want to perform some work without yielding, but also without
     // requiring the root to complete (by triggering placeholders).
 
+    // 获取fiberRoot是否结束工作
     let finishedWork = root.finishedWork;
     if (finishedWork !== null) {
       // This root is already complete. We can commit it.
+      // 如果具有root已经结束工作则执行completeRoot
       completeRoot(root, finishedWork, expirationTime);
     } else {
+      // 否则将finishedWork设置成null
       root.finishedWork = null;
       // If this root previously suspended, clear its existing timeout, since
       // we're about to try rendering again.
@@ -2310,6 +2371,7 @@ function performWorkOnRoot(
         // $FlowFixMe Complains noTimeout is not a TimeoutID, despite the check above
         cancelTimeout(timeoutHandle);
       }
+      // isYieldy判断是否可以打断，同步或者过期都不能打算
       const isYieldy = false;
       renderRoot(root, isYieldy, isExpired);
       finishedWork = root.finishedWork;
@@ -2323,6 +2385,7 @@ function performWorkOnRoot(
     let finishedWork = root.finishedWork;
     if (finishedWork !== null) {
       // This root is already complete. We can commit it.
+      // completeRoot提交阶段
       completeRoot(root, finishedWork, expirationTime);
     } else {
       root.finishedWork = null;
@@ -2342,6 +2405,7 @@ function performWorkOnRoot(
         // before committing.
         if (!shouldYield()) {
           // Still time left. Commit the root.
+          // renderRoot渲染阶段
           completeRoot(root, finishedWork, expirationTime);
         } else {
           // There's no time left. Mark this root as complete. We'll come

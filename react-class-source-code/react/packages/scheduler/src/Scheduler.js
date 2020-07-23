@@ -78,12 +78,15 @@ var deadlineObject = {
 };
 
 function ensureHostCallbackIsScheduled() {
+  // isExecutingCallback 如果已经有个callback被调用了，那么直接return。会自动进入循环，不需要重新启动调度
   if (isExecutingCallback) {
     // Don't schedule work yet; wait until the next time we yield.
     return;
   }
   // Schedule the host callback using the earliest expiration in the list.
+  // 获取第一个调度cb的过期时间
   var expirationTime = firstCallbackNode.expirationTime;
+  // isHostCallbackScheduled代表是否已经开始调度了，在ensureHostCallbackIsScheduled设置为true，在结束执行callback之后设置为false
   if (!isHostCallbackScheduled) {
     isHostCallbackScheduled = true;
   } else {
@@ -296,8 +299,13 @@ function unstable_wrapCallback(callback) {
     }
   };
 }
-
+/**
+ * @ikki
+ * @param {*} callback 传入的performAsyncWork函数
+ * @param {*} deprecated_options 以后会遗弃的参数
+ */
 function unstable_scheduleCallback(callback, deprecated_options) {
+  // 可以理解成 date.now()
   var startTime =
     currentEventStartTime !== -1 ? currentEventStartTime : getCurrentTime();
 
@@ -308,6 +316,7 @@ function unstable_scheduleCallback(callback, deprecated_options) {
     typeof deprecated_options.timeout === 'number'
   ) {
     // FIXME: Remove this branch once we lift expiration times out of React.
+    // 计算出新的过期时间
     expirationTime = startTime + deprecated_options.timeout;
   } else {
     switch (currentPriorityLevel) {
@@ -326,6 +335,7 @@ function unstable_scheduleCallback(callback, deprecated_options) {
     }
   }
 
+  // 创建一个调度节点newNode
   var newNode = {
     callback,
     priorityLevel: currentPriorityLevel,
@@ -337,16 +347,19 @@ function unstable_scheduleCallback(callback, deprecated_options) {
   // Insert the new callback into the list, ordered first by expiration, then
   // by insertion. So the new callback is inserted any other callback with
   // equal expiration.
+  // 按照timoutAt的顺序加入到CallbackNode链表，
   if (firstCallbackNode === null) {
     // This is the first callback in the list.
     firstCallbackNode = newNode.next = newNode.previous = newNode;
     ensureHostCallbackIsScheduled();
   } else {
     var next = null;
-    var node = firstCallbackNode;
+    var node = firstCallbackNode; //原本存在的node
     do {
+      // 如果新传入的过期时间小于链表头的过期时间
       if (node.expirationTime > expirationTime) {
         // The new callback expires before this one.
+        // 将next赋值 原来的node
         next = node;
         break;
       }
@@ -363,6 +376,7 @@ function unstable_scheduleCallback(callback, deprecated_options) {
       ensureHostCallbackIsScheduled();
     }
 
+    // 形成了环装结构
     var previous = next.previous;
     previous.next = next.previous = newNode;
     newNode.next = next;
@@ -441,11 +455,15 @@ var rAFID;
 var rAFTimeoutID;
 var requestAnimationFrameWithTimeout = function(callback) {
   // schedule rAF and also a setTimeout
+  // localRequestAnimationFrame 相当于 window.localRequestAnimationFrame这个api
   rAFID = localRequestAnimationFrame(function(timestamp) {
     // cancel the setTimeout
+    // 清除setTimeout
     localClearTimeout(rAFTimeoutID);
+    // 执行了animationtick这个方法
     callback(timestamp);
   });
+  // 如果localCancelAnimationFrame一直没有调用超过100ms，那么取消localCancelAnimationFrame，直接调用animationtick
   rAFTimeoutID = localSetTimeout(function() {
     // cancel the requestAnimationFrame
     localCancelAnimationFrame(rAFID);
@@ -481,6 +499,7 @@ if (typeof window !== 'undefined' && window._schedMock) {
   // "addEventListener" might not be available on the window object
   // if this is a mocked "window" object. So we need to validate that too.
   typeof window.addEventListener !== 'function'
+  // 当前不处于浏览器环境
 ) {
   var _callback = null;
   var _currentTime = -1;
@@ -654,18 +673,27 @@ if (typeof window !== 'undefined' && window._schedMock) {
     }
   };
 
+  /**
+   * @ikki
+   * @callback 
+   * @absoluteTimeout 传入的过期时间
+   */
   requestHostCallback = function(callback, absoluteTimeout) {
     scheduledHostCallback = callback;
     timeoutTime = absoluteTimeout;
+    // isFlushingHostCallback 是否正在执行callback
+    // isFlushingHostCallback || absoluteTimeout < 0 代表有cb正在执行，但absoluteTimeout小于0，应该立即执行
     if (isFlushingHostCallback || absoluteTimeout < 0) {
       // Don't wait for the next frame. Continue working ASAP, in a new event.
       window.postMessage(messageKey, '*');
     } else if (!isAnimationFrameScheduled) {
+      // isAnimationFrameScheduled代表是否已经开始调用requestAnimationFrame
       // If rAF didn't already schedule one, we need to schedule a frame.
       // TODO: If this rAF doesn't materialize because the browser throttles, we
       // might want to still have setTimeout trigger rIC as a backup to ensure
       // that we keep performing work.
       isAnimationFrameScheduled = true;
+      // requestAnimationFrameWithTimeout，其实就是调用requestAnimationFrame在加上设置了一个100ms的定时器，防止requestAnimationFrame太久不触发。
       requestAnimationFrameWithTimeout(animationTick);
     }
   };

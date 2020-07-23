@@ -242,13 +242,21 @@ export function findEarliestOutstandingPriorityLevel(
   return earliestExpirationTime;
 }
 
+/**
+ * @ikki
+ * @param {*} root  fiberRoot
+ * @param {*} currentTime 当前时间
+ */
 export function didExpireAtExpirationTime(
   root: FiberRoot,
   currentTime: ExpirationTime,
 ): void {
+  // 读取fiberRoot的过期时间
   const expirationTime = root.expirationTime;
+  // currentTime >= expirationTime  意思就是这个任务已经过期了
   if (expirationTime !== NoWork && currentTime >= expirationTime) {
     // The root has expired. Flush all work up to the current time.
+    // root.nextExpirationTimeToWorkOn 设置为当前时间
     root.nextExpirationTimeToWorkOn = currentTime;
   }
 }

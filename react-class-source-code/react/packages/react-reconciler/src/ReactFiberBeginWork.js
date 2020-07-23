@@ -1469,8 +1469,10 @@ function bailoutOnAlreadyFinishedWork(
   }
 
   // Check if the children have any pending work.
+  // 快速确定子树中是否有不在等待的变化
   const childExpirationTime = workInProgress.childExpirationTime;
   if (
+    // 代表子树也没有更新要在这次渲染中完成的
     childExpirationTime === NoWork ||
     childExpirationTime > renderExpirationTime
   ) {
@@ -1481,24 +1483,42 @@ function bailoutOnAlreadyFinishedWork(
   } else {
     // This fiber doesn't have work, but its subtree does. Clone the child
     // fibers and continue.
+    // 这个fiber没有更新，但是他的子树有更新，那么复制他的子树
     cloneChildFibers(current, workInProgress);
     return workInProgress.child;
   }
 }
 
+// 判断组件更新是否可以优化，
+// 根据节点类型进行分发处理
+// 根据过期时间等信息判断是否可以跳过
+/**
+ * 
+ * @param {*} current fiber
+ * @param {*} workInProgress fiber复制
+ * @param {*} renderExpirationTime 
+ */
 function beginWork(
   current: Fiber | null,
   workInProgress: Fiber,
   renderExpirationTime: ExpirationTime,
 ): Fiber | null {
+  // 获取当前fiber的过期时间
   const updateExpirationTime = workInProgress.expirationTime;
 
+  // current !== null判断节点是不是第一次渲染，如果是的话就是等于null
   if (current !== null) {
+    // memoizedProps上一次渲染完成之后的props
+    // pendingProps新的变动带来的新的props
     const oldProps = current.memoizedProps;
     const newProps = workInProgress.pendingProps;
     if (
+      // 前后props是否相等
       oldProps === newProps &&
+      // hasLegacyContextChanged判断了是否有老版本context使用并且发生变化
       !hasLegacyContextChanged() &&
+      // updateExpirationTime === NoWork代表没有更新
+      // updateExpirationTime > renderExpirationTime 代表有更新，但优先级不高
       (updateExpirationTime === NoWork ||
         updateExpirationTime > renderExpirationTime)
     ) {
@@ -1506,6 +1526,7 @@ function beginWork(
       // the begin phase. There's still some bookkeeping we that needs to be done
       // in this optimized path, mostly pushing stuff onto the stack.
       switch (workInProgress.tag) {
+        // HostRoot对应的是rootfiber的tag值
         case HostRoot:
           pushHostRootContext(workInProgress);
           resetHydrationState();
@@ -1589,6 +1610,7 @@ function beginWork(
   // Before entering the begin phase, clear the expiration time.
   workInProgress.expirationTime = NoWork;
 
+  // 如果节点是有更新的话
   switch (workInProgress.tag) {
     case IndeterminateComponent: {
       const elementType = workInProgress.elementType;
