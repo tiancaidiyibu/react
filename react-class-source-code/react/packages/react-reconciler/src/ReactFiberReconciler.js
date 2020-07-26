@@ -178,7 +178,7 @@ export function updateContainerAtExpirationTime(
   callback: ?Function,
 ) {
   // TODO: If this is a nested container, this won't be the root.
-  // ikki 对用fiberRoot中的current，也就是fiber对象
+  // ikki 对用fiberRoot中的current，也就是rootfiber对象
   const current = container.current;
 
   if (__DEV__) {

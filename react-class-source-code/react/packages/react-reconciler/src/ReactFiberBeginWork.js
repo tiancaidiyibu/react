@@ -129,7 +129,7 @@ if (__DEV__) {
  * @ikki
  * @param {*} current 之前的fiber
  * @param {*} workInProgress 新的fiber
- * @param {*} nextChildren  Component()后的reactElement
+ * @param {*} nextChildren  reactElement
  * @param {*} renderExpirationTime 
  */
 export function reconcileChildren(
@@ -443,9 +443,9 @@ function updateFunctionComponent(
 }
 
 function updateClassComponent(
-  current: Fiber | null,
+  current: Fiber | null, 
   workInProgress: Fiber,
-  Component: any,
+  Component: any, //workInProgress.type
   nextProps,
   renderExpirationTime: ExpirationTime,
 ) {
@@ -464,8 +464,12 @@ function updateClassComponent(
   // classComp通过new获取的对象
   const instance = workInProgress.stateNode;
   let shouldUpdate;
+  // 第一次render渲染的时候instance肯定为空，因为第一次渲染class并没有被更新过，因此节点还没有被创建
   if (instance === null) {
     if (current !== null) {
+      // 代表着第一次渲染的时候没有创建stateNode，说明是被 suspended的   后期了解
+
+
       // An class component without an instance only mounts if it suspended
       // inside a non- concurrent tree, in an inconsistent state. We want to
       // tree it like a new mount, even though an empty version of it already
@@ -476,12 +480,14 @@ function updateClassComponent(
       workInProgress.effectTag |= Placement;
     }
     // In the initial pass we might need to construct the instance.
+    // 用new workInProgress.type创建一个workInProgress.stateNode
     constructClassInstance(
       workInProgress,
       Component,
       nextProps,
       renderExpirationTime,
     );
+    // 
     mountClassInstance(
       workInProgress,
       Component,
@@ -491,6 +497,7 @@ function updateClassComponent(
     shouldUpdate = true;
   } else if (current === null) {
     // In a resume, we'll already have an instance we can reuse.
+    // 直接复用之前的instance，判断是否需要更新
     shouldUpdate = resumeMountClassInstance(
       workInProgress,
       Component,
@@ -704,6 +711,7 @@ function updateHostComponent(current, workInProgress, renderExpirationTime) {
   pushHostContext(workInProgress);
 
   if (current === null) {
+    // 是进行hydrate的操作，也就是复用原本存在的root的内部的DOM节点
     tryToClaimNextHydratableInstance(workInProgress);
   }
 
@@ -712,6 +720,7 @@ function updateHostComponent(current, workInProgress, renderExpirationTime) {
   const prevProps = current !== null ? current.memoizedProps : null;
 
   let nextChildren = nextProps.children;
+  // 判断nextProps是否是纯字符串
   const isDirectTextChild = shouldSetTextContent(type, nextProps);
 
   if (isDirectTextChild) {
@@ -732,6 +741,7 @@ function updateHostComponent(current, workInProgress, renderExpirationTime) {
   if (
     renderExpirationTime !== Never &&
     workInProgress.mode & ConcurrentMode &&
+    // 判断了是否有hidden这个prop，如果这个节点是AsyncMode的并且有hidden，就设置expirationTime为Never。
     shouldDeprioritizeSubtree(type, nextProps)
   ) {
     // Schedule this fiber to re-render at offscreen priority. Then bailout.
@@ -1511,7 +1521,7 @@ function bailoutOnAlreadyFinishedWork(
 // 根据过期时间等信息判断是否可以跳过
 /**
  * 
- * @param {*} current fiber
+ * @param {*} current workInProgress.alternate;
  * @param {*} workInProgress fiber复制
  * @param {*} renderExpirationTime 
  */

@@ -162,6 +162,7 @@ export function resetAfterCommit(containerInfo: Container): void {
   eventsEnabled = null;
 }
 
+// 创建dom节点的过程
 export function createInstance(
   type: string,
   props: Props,

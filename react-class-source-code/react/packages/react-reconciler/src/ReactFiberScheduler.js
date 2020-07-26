@@ -882,6 +882,9 @@ function resetChildExpirationTime(
   workInProgress.childExpirationTime = newChildExpirationTime;
 }
 
+// 1.根据是否中断调用不同的处理方法
+// 2.判断是否有兄弟节点来执行不同的操作
+// 3.完成节点之后赋值effect
 function completeUnitOfWork(workInProgress: Fiber): Fiber | null {
   // Attempt to complete the current unit of work, then move to the
   // next sibling. If there are no more siblings, return to the
@@ -899,6 +902,7 @@ function completeUnitOfWork(workInProgress: Fiber): Fiber | null {
     const returnFiber = workInProgress.return;
     const siblingFiber = workInProgress.sibling;
 
+    // Incomplete抛出过错误
     if ((workInProgress.effectTag & Incomplete) === NoEffect) {
       // This fiber completed.
       if (enableProfilerTimer) {
@@ -906,6 +910,7 @@ function completeUnitOfWork(workInProgress: Fiber): Fiber | null {
           startProfilerTimer(workInProgress);
         }
 
+        // 完成当前节点更新
         nextUnitOfWork = completeWork(
           current,
           workInProgress,
@@ -924,6 +929,7 @@ function completeUnitOfWork(workInProgress: Fiber): Fiber | null {
         );
       }
       stopWorkTimer(workInProgress);
+      // 重新计算优先级最高的ExpirationTime
       resetChildExpirationTime(workInProgress, nextRenderExpirationTime);
       if (__DEV__) {
         ReactCurrentFiber.resetCurrentFiber();
@@ -1761,7 +1767,7 @@ function scheduleWorkToRoot(fiber: Fiber, expirationTime): FiberRoot | null {
  * @returns
  */
 function scheduleWork(fiber: Fiber, expirationTime: ExpirationTime) {
-  // ikki 获取fiberRoot，并且将查找到的childExpirationTime更新
+  // ikki 获取fiberRoot，以及上层fiber的childrenExpirationTime
   const root = scheduleWorkToRoot(fiber, expirationTime);
   if (root === null) {
     return;
@@ -1777,10 +1783,11 @@ function scheduleWork(fiber: Fiber, expirationTime: ExpirationTime) {
   ) {
     // This is an interruption. (Used for performance tracking.) 用来记录的，可以县不了解
     interruptedBy = fiber;
-    // resetStack 高优先级的任务打断了低优先的任务
+    // resetStack 高优先级的任务打断了低优先的任务，并且回滚状态
     resetStack();
   }
-  //  markPendingPriorityLevel涉及到概念比较多，以后再看
+  // 这个函数主要是更新root的最高优先级和最低优先级（earliestPendingTime和lastestPendingTime;）,
+  //  同时设置下一个执行操作的时间nextExpirationTimeToWorkOn（即root中具有最高优先级的fiber的expirationTime）
   markPendingPriorityLevel(root, expirationTime);
   if (
     // If we're in the render phase, we don't need to schedule this root
@@ -2025,10 +2032,12 @@ function requestCurrentTime() {
 // It's up to the renderer to call renderRoot at some point in the future.
 /**
  * @ikki
- * @param {*} root 得到的root
+ * @param {*} root 得到的root，并且链接表的childrenExpirationTime都很新完毕
  * @param {*} expirationTime  经过一些列处理的ExpirationTime，记录任务的过期时间
  */
 function requestWork(root: FiberRoot, expirationTime: ExpirationTime) {
+  // 将root加到schedule, 即设置firstScheduledRoot， lastScheduledRoot以及他们的nextScheduleRoot属性。
+  // 说白了就是一个闭环链式结构 first => next => next => last(next => first), 同时更新root的expirationTime属性
   addRootToSchedule(root, expirationTime);
   //  isRendering:说明循环已经开始 performWorkOnRoot开始设置为true，结束的时候设置为false，表示进入渲染阶段，这是包含render和commit阶段的。
   if (isRendering) {
@@ -2205,7 +2214,9 @@ function performWork(minExpirationTime: ExpirationTime, dl: Deadline | null) {
 
   // Keep working on roots until there's no more work, or until we reach
   // the deadline.
-  // 首先要通过findHighestPriorityRoot找到下一个需要操作的root，会设置两个全局变量
+  // findHighestPriorityRoot函数主要执行两个操作：
+  // 一个是判断当前root是否还有任务，如果没有， 则从firstScheuleRoot链中移除。 
+  // 一个是找出优先级最高的root和其对应的优先级并赋值给 nextFlushedRoot\nextFlushedExpirationTime
   findHighestPriorityRoot();
 
   if (deadline !== null) {

@@ -574,6 +574,7 @@ function completeWork(
       popHostContext(workInProgress);
       const rootContainerInstance = getRootHostContainer();
       const type = workInProgress.type;
+      // 判断节点是否第一次渲染以及第一次挂载
       if (current !== null && workInProgress.stateNode != null) {
         updateHostComponent(
           current,

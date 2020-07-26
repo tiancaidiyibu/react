@@ -436,6 +436,7 @@ export function processUpdateQueue<State>(
 ): void {
   hasForceUpdate = false;
 
+  // 判断workInProgress.current的UpdateQueue是否和workInProgress.UpdateQueue相等，如果相等就复制orkInProgress.current.UpdateQueue
   queue = ensureWorkInProgressQueueIsAClone(workInProgress, queue);
 
   if (__DEV__) {
@@ -450,6 +451,8 @@ export function processUpdateQueue<State>(
   // Iterate through the list of updates to compute the result.
   let update = queue.firstUpdate;
   let resultState = newBaseState;
+
+  // 计算新的state的过程
   while (update !== null) {
     const updateExpirationTime = update.expirationTime;
     if (updateExpirationTime > renderExpirationTime) {
@@ -473,6 +476,7 @@ export function processUpdateQueue<State>(
     } else {
       // This update does have sufficient priority. Process it and compute
       // a new result.
+      // 通过update计算出新的state
       resultState = getStateFromUpdate(
         workInProgress,
         queue,
@@ -575,6 +579,7 @@ export function processUpdateQueue<State>(
   // dealt with the props. Context in components that specify
   // shouldComponentUpdate is tricky; but we'll have to account for
   // that regardless.
+  // 之前的queueUpdate已经更新完了，如果还有的话expirationTime等于剩下的update中优先级最高的过期时间
   workInProgress.expirationTime = newExpirationTime;
   workInProgress.memoizedState = resultState;
 

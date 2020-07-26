@@ -552,7 +552,7 @@ function legacyRenderSubtreeIntoContainer(
 
   // TODO: Without `any` type, Flow says "Property cannot be accessed on any
   // member of intersection type." Whyyyyyy.
-  //ikki 判断传入的真实节点是否含有_reactRootContaine,第一次肯定是没有的，需要下面去创建
+  //ikki 判断传入的真实节点是否含有_reactRootContaine,也就是FiberRoot,第一次肯定是没有的，需要下面去创建
   let root: Root = (container._reactRootContainer: any);  
   if (!root) {
     // Initial mount

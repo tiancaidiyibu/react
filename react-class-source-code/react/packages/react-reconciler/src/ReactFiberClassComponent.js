@@ -504,8 +504,10 @@ function checkClassInstance(workInProgress: Fiber, ctor: any, newProps: any) {
 
 function adoptClassInstance(workInProgress: Fiber, instance: any): void {
   instance.updater = classComponentUpdater;
+  // workInProgress的本地状态存储设置设instance
   workInProgress.stateNode = instance;
   // The instance needs access to the fiber so that it can schedule updates
+  // 后期可以通过react组件的this._reactInternalFiber拿到当前的fiber
   ReactInstanceMap.set(instance, workInProgress);
   if (__DEV__) {
     instance._reactInternalInstance = fakeInternalInstance;
@@ -562,6 +564,7 @@ function constructClassInstance(
   }
   // 相当于 new 了一个 workInProcess.type
   const instance = new ctor(props, context);
+  // 获取state
   const state = (workInProgress.memoizedState =
     instance.state !== null && instance.state !== undefined
       ? instance.state
@@ -735,6 +738,7 @@ function mountClassInstance(
     checkClassInstance(workInProgress, ctor, newProps);
   }
 
+  // 获取workInProgress的本地状态
   const instance = workInProgress.stateNode;
   instance.props = newProps;
   instance.state = workInProgress.memoizedState;
@@ -785,6 +789,7 @@ function mountClassInstance(
 
   let updateQueue = workInProgress.updateQueue;
   if (updateQueue !== null) {
+    // 计算出新的state，并且赋值给workInProgress.memoizedState
     processUpdateQueue(
       workInProgress,
       updateQueue,
@@ -795,8 +800,10 @@ function mountClassInstance(
     instance.state = workInProgress.memoizedState;
   }
 
+  // 判断是都有getDerivedStateFromProps这个新的生命周期方法
   const getDerivedStateFromProps = ctor.getDerivedStateFromProps;
   if (typeof getDerivedStateFromProps === 'function') {
+    // getDerivedStateFromProps返回的state赋值给workInProgress.memoizedState（用来判断state是否给信）
     applyDerivedStateFromProps(
       workInProgress,
       ctor,
