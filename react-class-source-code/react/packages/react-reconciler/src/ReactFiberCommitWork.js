@@ -690,6 +690,7 @@ function commitPlacement(finishedWork: Fiber): void {
   }
 
   // Recursively insert all host nodes into the parent.
+  // 就是从父链上找到第一个具有container的节点或者是HostComponent
   const parentFiber = getHostParentFiber(finishedWork);
 
   // Note: these two variables *must* always be updated together.
@@ -716,6 +717,7 @@ function commitPlacement(finishedWork: Fiber): void {
           'in React. Please file an issue.',
       );
   }
+  // 如果parent需要重新设置text调用resetTextContent
   if (parentFiber.effectTag & ContentReset) {
     // Reset the text content of the parent before doing any insertions
     resetTextContent(parent);
@@ -723,11 +725,23 @@ function commitPlacement(finishedWork: Fiber): void {
     parentFiber.effectTag &= ~ContentReset;
   }
 
+  // 找到当前要执行插入的节点的现有的第一个右侧节点，如果这个方法返回null，则会直接调用parent.appendChild
+  // 这里主要考虑的问题是parent.appendChild是插入到最后的，而对于 React 的节点操作，很可能插入的节点是在中间。
+  // 对于第一次渲染，因为所有HostComponent都是需要插入的，所以按照顺序appendChild没有问题，所以 React 把这一步放在completeWork就做了。
+  // 但是对于后续更新这个是不确定的，所以要找到整棵树中所有HostComponent的树结构中的右侧节点。
+  // 这个节点可能存在于：
+  //   父链中任一节点的右侧节点的子树中的第一个HostComponent
+  //   他的右侧兄弟节点或者子树中的第一个HostComponent
+  // 这个算法就是用来实现这个搜索过程
   const before = getHostSibling(finishedWork);
   // We only have the top Fiber that was inserted but we need recurse down its
   // children to find all the terminal nodes.
   let node: Fiber = finishedWork;
+
+
+  // 同时这是个循环，这个跟在completeWork里appendAllChindren一样，要把当前组件的第一层子节点执行插入，比如当前组件如果是一个返回数组的ClassComponent
   while (true) {
+    // 判断Fiber.tag是否等于HostComponent或者HostText，只有这两个才有茶语必要
     if (node.tag === HostComponent || node.tag === HostText) {
       if (before) {
         if (isContainer) {
@@ -743,6 +757,8 @@ function commitPlacement(finishedWork: Fiber): void {
         }
       }
     } else if (node.tag === HostPortal) {
+      // 对于HostPortal不需要操作，因为这其实是他的子节点插入
+
       // If the insertion itself is a portal, then we don't want to traverse
       // down its children. Instead, we'll get insertions from each child in
       // the portal directly.
@@ -778,9 +794,13 @@ function unmountHostComponents(current): void {
   let currentParent;
   let currentParentIsContainer;
 
+
+  // 将整个子树节点遍历删除（全部字节点，不止第一层）
   while (true) {
+    // 找到符合 父Fiber.tag 为HostComponent|HostRoot|HostPortal
     if (!currentParentIsValid) {
       let parent = node.return;
+      
       findParent: while (true) {
         invariant(
           parent !== null,
@@ -828,6 +848,7 @@ function unmountHostComponents(current): void {
         continue;
       }
     } else {
+      // 卸载ref，如果是classComponent调用componentWillUnmount
       commitUnmount(node);
       // Visit children because we may find more host components below.
       if (node.child !== null) {
@@ -854,7 +875,9 @@ function unmountHostComponents(current): void {
     node = node.sibling;
   }
 }
-
+// 遍历子树
+// 卸载ref
+// 如果有class组件的调用componentWillUnmount卸载
 function commitDeletion(current: Fiber): void {
   if (supportsMutation) {
     // Recursively delete all host nodes from the parent.
@@ -867,12 +890,13 @@ function commitDeletion(current: Fiber): void {
   detachFiber(current);
 }
 
+
 function commitWork(current: Fiber | null, finishedWork: Fiber): void {
   if (!supportsMutation) {
     commitContainer(finishedWork);
     return;
   }
-
+ 
   switch (finishedWork.tag) {
     case ClassComponent: {
       return;
@@ -888,9 +912,12 @@ function commitWork(current: Fiber | null, finishedWork: Fiber): void {
         const oldProps = current !== null ? current.memoizedProps : newProps;
         const type = finishedWork.type;
         // TODO: Type the updateQueue to be specific to host components.
+
+        // completeWork的时候hostComponent的时候返回了updatePayload数组，以【key,value】形式
         const updatePayload: null | UpdatePayload = (finishedWork.updateQueue: any);
         finishedWork.updateQueue = null;
         if (updatePayload !== null) {
+          // 根据之前在diffProperties计算出来的updatePayloads数组进行 DOM 更新
           commitUpdate(
             instance,
             updatePayload,

@@ -629,11 +629,13 @@ export function diffProperties(
   let propKey;
   let styleName;
   let styleUpdates = null;
+  // lastProps是上次一渲染的结果产生的props；
+  // nextProps是这次新的props
   for (propKey in lastProps) {
-    if (
-      nextProps.hasOwnProperty(propKey) ||
-      !lastProps.hasOwnProperty(propKey) ||
-      lastProps[propKey] == null
+    if ( //如果不符合这个判断就删除
+      nextProps.hasOwnProperty(propKey) || //如果新的props有
+      !lastProps.hasOwnProperty(propKey) || //如果老的没有
+      lastProps[propKey] == null //如果老的为null
     ) {
       continue;
     }

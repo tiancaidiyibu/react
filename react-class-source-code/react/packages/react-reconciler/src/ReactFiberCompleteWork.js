@@ -101,9 +101,13 @@ if (supportsMutation) {
   ) {
     // We only have the top Fiber that was created but we need recurse down its
     // children to find all the terminal nodes.
+    // 获取当前fiber的child
     let node = workInProgress.child;
+    // 
     while (node !== null) {
       if (node.tag === HostComponent || node.tag === HostText) {
+        // 如果childFiber的tag是HostComponent或者HostText，则执行appendInitialChild
+        // appendInitialChild是将子节点挂载到Instance上
         appendInitialChild(parent, node.stateNode);
       } else if (node.tag === HostPortal) {
         // If we have a portal child, then we don't want to traverse
@@ -156,6 +160,7 @@ if (supportsMutation) {
     // TODO: Experiencing an error where oldProps is null. Suggests a host
     // component is hitting the resume path. Figure out why. Possibly
     // related to `hidden`.
+    // prepareUpdate后返回updatePayload数组
     const updatePayload = prepareUpdate(
       instance,
       type,
@@ -168,6 +173,7 @@ if (supportsMutation) {
     workInProgress.updateQueue = (updatePayload: any);
     // If the update payload indicates that there is a change or if there
     // is a new ref we mark this as an update. All the work is done in commitWork.
+    // 根据是否有updatePayload这个数组来标记markUpdate
     if (updatePayload) {
       markUpdate(workInProgress);
     }
@@ -619,6 +625,7 @@ function completeWork(
             markUpdate(workInProgress);
           }
         } else {
+          // 创建type中对应的真实节点
           let instance = createInstance(
             type,
             newProps,
@@ -627,12 +634,14 @@ function completeWork(
             workInProgress,
           );
 
+          // 查找workInProgress下的第一层节点以及第一层的兄弟节点挂载到instance下
           appendAllChildren(instance, workInProgress, false, false);
 
           // Certain renderers require commit-time effects for initial mount.
           // (eg DOM renderer supports auto-focus for certain elements).
           // Make sure such renderers get scheduled for later work.
           if (
+            // 就是讲props对应应该在dom节点上需要展现的 attributes，value，children处理，以及事件监听相关的
             finalizeInitialChildren(
               instance,
               type,
@@ -641,8 +650,10 @@ function completeWork(
               currentHostContext,
             )
           ) {
+            // 只有onfcous的节点执行markUpdate，来进行commit阶段特殊操作
             markUpdate(workInProgress);
           }
+          // workInProgress.stateNode挂载初始化好的instance
           workInProgress.stateNode = instance;
         }
 

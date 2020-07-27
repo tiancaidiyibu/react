@@ -388,7 +388,9 @@ function commitAllHostEffects() {
 
     const effectTag = nextEffect.effectTag;
 
+   
     if (effectTag & ContentReset) {
+       // ContentReset需要重置文字节点，内容设置为空字符串
       commitResetTextContent(nextEffect);
     }
 
@@ -405,6 +407,7 @@ function commitAllHostEffects() {
     // effect tag and switch on that value.
     let primaryEffectTag = effectTag & (Placement | Update | Deletion);
     switch (primaryEffectTag) {
+      // Placement新增节点
       case Placement: {
         commitPlacement(nextEffect);
         // Clear the "placement" from effect tag so that we know that this is inserted, before
@@ -415,6 +418,7 @@ function commitAllHostEffects() {
         nextEffect.effectTag &= ~Placement;
         break;
       }
+      // PlacementAndUpdate之前存在的节点，但是和兄弟位置交换
       case PlacementAndUpdate: {
         // Placement
         commitPlacement(nextEffect);
@@ -427,11 +431,13 @@ function commitAllHostEffects() {
         commitWork(current, nextEffect);
         break;
       }
+      // Update更新节点
       case Update: {
         const current = nextEffect.alternate;
         commitWork(current, nextEffect);
         break;
       }
+      // Deletion删除节点
       case Deletion: {
         commitDeletion(nextEffect);
         break;
@@ -537,6 +543,7 @@ function commitRoot(root: FiberRoot, finishedWork: Fiber): void {
       'related to the return field. This error is likely caused by a bug ' +
       'in React. Please file an issue.',
   );
+  // 正在等待提交的任务的`expirationTime`
   const committedExpirationTime = root.pendingCommitExpirationTime;
   invariant(
     committedExpirationTime !== NoWork,
@@ -549,6 +556,7 @@ function commitRoot(root: FiberRoot, finishedWork: Fiber): void {
   // about to commit. This needs to happen before calling the lifecycles, since
   // they may schedule additional updates.
   const updateExpirationTimeBeforeCommit = finishedWork.expirationTime;
+  // rootFiber中所有子树中优先级最高的ExpirationTime
   const childExpirationTimeBeforeCommit = finishedWork.childExpirationTime;
   const earliestRemainingTimeBeforeCommit =
     updateExpirationTimeBeforeCommit === NoWork ||
@@ -570,6 +578,7 @@ function commitRoot(root: FiberRoot, finishedWork: Fiber): void {
   ReactCurrentOwner.current = null;
 
   let firstEffect;
+  // 如果rootFiber也有更新
   if (finishedWork.effectTag > PerformedWork) {
     // A fiber's effect list consists only of its children, not itself. So if
     // the root has an effect, we need to add it to the end of the list. The
@@ -595,6 +604,7 @@ function commitRoot(root: FiberRoot, finishedWork: Fiber): void {
     let didError = false;
     let error;
     if (__DEV__) {
+      // 为了帮助开发者在开发过程中收集错误，并且防止浏览器调试相关的一些工具问题
       invokeGuardedCallback(null, commitBeforeMutationLifecycles, null);
       if (hasCaughtError()) {
         didError = true;
@@ -602,6 +612,7 @@ function commitRoot(root: FiberRoot, finishedWork: Fiber): void {
       }
     } else {
       try {
+        // commitBeforeMutationLifecycles
         commitBeforeMutationLifecycles();
       } catch (e) {
         didError = true;
@@ -645,6 +656,7 @@ function commitRoot(root: FiberRoot, finishedWork: Fiber): void {
       }
     } else {
       try {
+        // dom节点删除或者更新等操作
         commitAllHostEffects();
       } catch (e) {
         didError = true;
@@ -684,6 +696,7 @@ function commitRoot(root: FiberRoot, finishedWork: Fiber): void {
     let didError = false;
     let error;
     if (__DEV__) {
+      
       invokeGuardedCallback(
         null,
         commitAllLifeCycles,
@@ -697,6 +710,7 @@ function commitRoot(root: FiberRoot, finishedWork: Fiber): void {
       }
     } else {
       try {
+        // 提交组件的生命周期
         commitAllLifeCycles(root, committedExpirationTime);
       } catch (e) {
         didError = true;
@@ -738,6 +752,7 @@ function commitRoot(root: FiberRoot, finishedWork: Fiber): void {
     // error boundaries.
     legacyErrorBoundariesThatAlreadyFailed = null;
   }
+  // 
   onCommit(root, earliestRemainingTimeAfterCommit);
 
   if (enableSchedulerTracing) {
@@ -1252,7 +1267,8 @@ function renderRoot(
     } catch (thrownValue) {
       if (nextUnitOfWork === null) {
         // This is a fatal error.
-        didFatal = true;
+        
+        didFatal = true; //致命错误
         onUncaughtError(thrownValue);
       } else {
         if (__DEV__) {

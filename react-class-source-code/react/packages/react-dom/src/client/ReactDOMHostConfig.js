@@ -164,11 +164,11 @@ export function resetAfterCommit(containerInfo: Container): void {
 
 // 创建dom节点的过程
 export function createInstance(
-  type: string,
-  props: Props,
+  type: string, //workInProgress.type
+  props: Props, //workInProgress.pendingProps
   rootContainerInstance: Container,
   hostContext: HostContext,
-  internalInstanceHandle: Object,
+  internalInstanceHandle: Object,  //workInProgress
 ): Instance {
   let parentNamespace: string;
   if (__DEV__) {
@@ -190,13 +190,18 @@ export function createInstance(
   } else {
     parentNamespace = ((hostContext: any): HostContextProd);
   }
+  // 根据type和props创建节点
   const domElement: Instance = createElement(
     type,
     props,
     rootContainerInstance,
     parentNamespace,
   );
+  // precacheFiberNode将 domElement['__reactInternalInstance$' + randomKey] = workInProgress
+  // 后期可以通过dom['__reactInternalInstance$' + randomKey]来获取对应的fiber
   precacheFiberNode(internalInstanceHandle, domElement);
+  // updateFiberProps将domElement['__reactEventHandlers$' + randomKey] = props
+  // 将props存储到node的中对应的key上
   updateFiberProps(domElement, props);
   return domElement;
 }
