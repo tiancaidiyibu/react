@@ -24,6 +24,7 @@ import SimpleEventPlugin from '../events/SimpleEventPlugin';
  * Inject modules for resolving DOM hierarchy and plugin ordering.
  */
 EventPluginHub.injection.injectEventPluginOrder(DOMEventPluginOrder);
+
 EventPluginUtils.setComponentTree(
   getFiberCurrentPropsFromNode,
   getInstanceFromNode,

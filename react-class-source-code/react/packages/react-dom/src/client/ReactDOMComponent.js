@@ -223,6 +223,7 @@ if (__DEV__) {
 }
 
 function ensureListeningTo(rootContainerElement, registrationName) {
+  // rootContainerElement是 React 应用的挂载点，或者是HostPortal的container，所以这些事件其实都是通过事件代理来实现的。
   const isDocumentOrFragment =
     rootContainerElement.nodeType === DOCUMENT_NODE ||
     rootContainerElement.nodeType === DOCUMENT_FRAGMENT_NODE;
@@ -256,6 +257,7 @@ export function trapClickOnNonInteractiveElement(node: HTMLElement) {
 }
 
 function setInitialDOMProperties(
+  
   tag: string,
   domElement: Element,
   rootContainerElement: Element | Document,

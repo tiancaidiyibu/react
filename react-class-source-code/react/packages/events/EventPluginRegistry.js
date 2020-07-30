@@ -39,8 +39,10 @@ function recomputePluginOrdering(): void {
     // Wait until an `eventPluginOrder` is injected.
     return;
   }
+  // 遍历namesToPlugins
   for (const pluginName in namesToPlugins) {
     const pluginModule = namesToPlugins[pluginName];
+    // 查找pluginName在eventPluginOrder数组的index从(1,2,3,4,5),0没有
     const pluginIndex = eventPluginOrder.indexOf(pluginName);
     invariant(
       pluginIndex > -1,
@@ -48,6 +50,7 @@ function recomputePluginOrdering(): void {
         'the plugin ordering, `%s`.',
       pluginName,
     );
+    // plugins是个数组，初始化是空数组
     if (plugins[pluginIndex]) {
       continue;
     }
@@ -57,14 +60,18 @@ function recomputePluginOrdering(): void {
         'method, but `%s` does not.',
       pluginName,
     );
+    // 根据查到index插入pluginModule到plugins数组中
     plugins[pluginIndex] = pluginModule;
+    // 拿到pluginModule的eventTypes,可以查看ChangeEventPlugin来学习
+    // eventTypes是以具体事件为key的 map 对象，其中每个事件的phasedRegistrationNames是指定props的名字，dependencies是如果需要绑定change事件需要同时绑定哪些事件
     const publishedEvents = pluginModule.eventTypes;
+    // 遍历publishedEvents
     for (const eventName in publishedEvents) {
       invariant(
         publishEventForPlugin(
-          publishedEvents[eventName],
-          pluginModule,
-          eventName,
+          publishedEvents[eventName], //ChangeEventPlugin.eventTypes.change
+          pluginModule, //ChangeEventPlugin
+          eventName, //change
         ),
         'EventPluginRegistry: Failed to publish event `%s` for plugin `%s`.',
         eventName,
@@ -76,10 +83,10 @@ function recomputePluginOrdering(): void {
 
 /**
  * Publishes an event so that it can be dispatched by the supplied plugin.
- *
- * @param {object} dispatchConfig Dispatch configuration for the event.
- * @param {object} PluginModule Plugin publishing the event.
- * @return {boolean} True if the event was successfully published.
+ * @ikki
+ * @param {object} dispatchConfig eventTypes配置项 // Dispatch configuration for the event.
+ * @param {object} PluginModule  Plugin publishing the event.
+ * @return {eventName} eventTypes配置项的名字  True if the event was successfully published.
  * @private
  */
 function publishEventForPlugin(
@@ -93,17 +100,22 @@ function publishEventForPlugin(
       'event name, `%s`.',
     eventName,
   );
+  // eventNameDispatchConfigs全局对象，默认是空的
+  // { change: changeEventPlugin.eventTypes.change }
   eventNameDispatchConfigs[eventName] = dispatchConfig;
 
+  // 获取changeEventPlugin.eventTypes.change.phasedRegistrationNames
+  // 也就是{ bubbled: 'onChange',captured: 'onChangeCapture',}
   const phasedRegistrationNames = dispatchConfig.phasedRegistrationNames;
   if (phasedRegistrationNames) {
+    
     for (const phaseName in phasedRegistrationNames) {
       if (phasedRegistrationNames.hasOwnProperty(phaseName)) {
         const phasedRegistrationName = phasedRegistrationNames[phaseName];
         publishRegistrationName(
-          phasedRegistrationName,
-          pluginModule,
-          eventName,
+          phasedRegistrationName, //例如onchange
+          pluginModule,  //changeEventPlugin
+          eventName, //change
         );
       }
     }
@@ -122,8 +134,9 @@ function publishEventForPlugin(
 /**
  * Publishes a registration name that is used to identify dispatched events.
  *
- * @param {string} registrationName Registration name to add.
- * @param {object} PluginModule Plugin publishing the event.
+ * @param {string} registrationName 例如onchange
+ * @param {object} PluginModule ChangeEventPlugin
+ * @param {string}  eventName change
  * @private
  */
 function publishRegistrationName(
@@ -137,7 +150,9 @@ function publishRegistrationName(
       'registration name, `%s`.',
     registrationName,
   );
+  // {onchange : ChangeEventPlugin}
   registrationNameModules[registrationName] = pluginModule;
+  // {onchange : TOP_BLUR....等}
   registrationNameDependencies[registrationName] =
     pluginModule.eventTypes[eventName].dependencies;
 
@@ -162,19 +177,24 @@ function publishRegistrationName(
  */
 export const plugins = [];
 
-/**
- * Mapping from event name to dispatch config
- */
+
+//  例如changeEventPlugin
+// {
+//   change: changeEventPlugin.eventTypes.change,
+//   ...other plugins
+// }
 export const eventNameDispatchConfigs = {};
-
-/**
- * Mapping from registration name to plugin module
- */
+//  例如changeEventPlugin
+// {
+//   onChange: changeEventPlugin,
+//   onChangeCapture: changeEventPlugin
+// }
 export const registrationNameModules = {};
-
-/**
- * Mapping from registration name to event name
- */
+//  例如changeEventPlugin
+// {
+//   onChange: ChangePlugin.eventTypes.change.dependencies,
+//   onChangeCapture: ChangePlugin.eventTypes.change.dependencies
+// }
 export const registrationNameDependencies = {};
 
 /**
@@ -203,7 +223,16 @@ export function injectEventPluginOrder(
     'EventPluginRegistry: Cannot inject event plugin ordering more than ' +
       'once. You are likely trying to load more than one copy of React.',
   );
-  // Clone the ordering so it cannot be dynamically mutated.
+  // Clone the ordering so it cannot be dynamically mutate
+  //  复制EventPluginHub.injection.injectEventPluginOrder传入的数组DOMEventPluginOrder
+  // const DOMEventPluginOrder = [
+  //   'ResponderEventPlugin',
+  //   'SimpleEventPlugin',
+  //   'EnterLeaveEventPlugin',
+  //   'ChangeEventPlugin',
+  //   'SelectEventPlugin',
+  //   'BeforeInputEventPlugin',
+  // ];
   eventPluginOrder = Array.prototype.slice.call(injectedEventPluginOrder);
   recomputePluginOrdering();
 }
@@ -218,10 +247,16 @@ export function injectEventPluginOrder(
  * @internal
  * @see {EventPluginHub.injection.injectEventPluginsByName}
  */
+/**
+ * @ikki
+ * @param {*} injectedNamesToPlugins  EventPluginHub.injection.injectEventPluginsByName传的对象
+ */
 export function injectEventPluginsByName(
+  
   injectedNamesToPlugins: NamesToPlugins,
 ): void {
   let isOrderingDirty = false;
+  // 遍历injectedNamesToPlugins，第一次将injectedNamesToPlugins中的key，v放入到namesToPlugins对象中
   for (const pluginName in injectedNamesToPlugins) {
     if (!injectedNamesToPlugins.hasOwnProperty(pluginName)) {
       continue;

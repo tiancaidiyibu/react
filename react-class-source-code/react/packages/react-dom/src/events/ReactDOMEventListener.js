@@ -83,6 +83,7 @@ function releaseTopLevelCallbackBookKeeping(instance) {
 }
 
 function handleTopLevel(bookKeeping) {
+  // 拿到fiber
   let targetInst = bookKeeping.targetInst;
 
   // Loop through the hierarchy, in case there's any nested components.
@@ -95,6 +96,7 @@ function handleTopLevel(bookKeeping) {
       bookKeeping.ancestors.push(ancestor);
       break;
     }
+    // 寻找root
     const root = findRootContainerNode(ancestor);
     if (!root) {
       break;
@@ -106,9 +108,9 @@ function handleTopLevel(bookKeeping) {
   for (let i = 0; i < bookKeeping.ancestors.length; i++) {
     targetInst = bookKeeping.ancestors[i];
     runExtractedEventsInBatch(
-      bookKeeping.topLevelType,
-      targetInst,
-      bookKeeping.nativeEvent,
+      bookKeeping.topLevelType,  //事件名称
+      targetInst, //一般情况下还是原来的fiber
+      bookKeeping.nativeEvent, //原始事件对象
       getEventTarget(bookKeeping.nativeEvent),
     );
   }
@@ -135,12 +137,14 @@ export function isEnabled() {
  * @internal
  */
 export function trapBubbledEvent(
-  topLevelType: DOMTopLevelEventType,
+  
+  topLevelType: DOMTopLevelEventType, 
   element: Document | Element,
 ) {
   if (!element) {
     return null;
   }
+  // dispatchInteractiveEvent和dispatchEvent分别对应不同优先级的事件，前者优先级较高，如果处于ConcurrentMode产生的expirationTime会较小。
   const dispatch = isInteractiveTopLevelEventType(topLevelType)
     ? dispatchInteractiveEvent
     : dispatchEvent;
@@ -181,6 +185,11 @@ export function trapCapturedEvent(
   );
 }
 
+/**
+ * 
+ * @param {*} topLevelType  //例如TOP_BLUR,TOP_CHANGE之类
+ * @param {*} nativeEvent  //事件出发 DOM 事件对象
+ */
 function dispatchInteractiveEvent(topLevelType, nativeEvent) {
   interactiveUpdates(dispatchEvent, topLevelType, nativeEvent);
 }
@@ -193,11 +202,15 @@ export function dispatchEvent(
     return;
   }
 
+  // 获取event对象上的target
   const nativeEventTarget = getEventTarget(nativeEvent);
+  // 找到点击事件触发的原始节点最近的Fiber对象
+  // 根据设置在DOM节点上的`internalInstanceKey`来寻找
   let targetInst = getClosestInstanceFromNode(nativeEventTarget);
   if (
     targetInst !== null &&
     typeof targetInst.tag === 'number' &&
+    // isFiberMounted判断fiber对象对应的dom节点是否已经挂载了
     !isFiberMounted(targetInst)
   ) {
     // If we get an event (ex: img onload) before committing that
@@ -206,7 +219,7 @@ export function dispatchEvent(
     // dispatching them after the mount.
     targetInst = null;
   }
-
+  // 创建了bookKeeping对象，包含了事件名称，原始事件对象，以及最近的Fiber对象，然后调用batchedUpdates，我们来看看这个方法：
   const bookKeeping = getTopLevelCallbackBookKeeping(
     topLevelType,
     nativeEvent,

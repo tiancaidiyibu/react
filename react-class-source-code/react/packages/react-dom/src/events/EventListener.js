@@ -12,6 +12,7 @@ export function addEventBubbleListener(
   eventType: string,
   listener: Function,
 ): void {
+  // 冒泡阶段出发
   element.addEventListener(eventType, listener, false);
 }
 
@@ -20,5 +21,6 @@ export function addEventCaptureListener(
   eventType: string,
   listener: Function,
 ): void {
+  // 捕获阶段出发
   element.addEventListener(eventType, listener, true);
 }

@@ -124,15 +124,20 @@ function getListeningForDocument(mountAt: any) {
  * @param {object} mountAt Container where to mount the listener
  */
 export function listenTo(
+  
   registrationName: string,
   mountAt: Document | Element,
 ) {
+  // 用来记录mountAt是否监听了某些事件
   const isListening = getListeningForDocument(mountAt);
+  // 获取registrationName对应的Plugins.eventTypes[change].dependencies
+  // 例如registrationNameDependencies = { onchange: [TOP_BLUR,TOP_CHANGE,TOP_CLICK,] }
   const dependencies = registrationNameDependencies[registrationName];
 
   for (let i = 0; i < dependencies.length; i++) {
     const dependency = dependencies[i];
     if (!(isListening.hasOwnProperty(dependency) && isListening[dependency])) {
+      // 一些特定的事件调用trapCapturedEvent之外，其他都绑定trapBubbledEvent，
       switch (dependency) {
         case TOP_SCROLL:
           trapCapturedEvent(TOP_SCROLL, mountAt);
@@ -162,6 +167,7 @@ export function listenTo(
           // By default, listen on the top level to all non-media events.
           // Media events don't bubble so adding the listener wouldn't do anything.
           const isMediaEvent = mediaEventTypes.indexOf(dependency) !== -1;
+          // 判断一些关于媒体之类的事件
           if (!isMediaEvent) {
             trapBubbledEvent(dependency, mountAt);
           }

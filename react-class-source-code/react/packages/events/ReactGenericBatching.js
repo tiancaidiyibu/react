@@ -26,7 +26,17 @@ let _interactiveUpdatesImpl = function(fn, a, b) {
 let _flushInteractiveUpdatesImpl = function() {};
 
 let isBatching = false;
+
+/**
+ *
+ *
+ * @export
+ * @param {*} fn handleTopLevel方法
+ * @param {*} bookkeeping 包含了事件名称，原始事件对象，以及最近的Fiber对象，
+ * @returns
+ */
 export function batchedUpdates(fn, bookkeeping) {
+  
   if (isBatching) {
     // If we are currently inside another batch, we need to wait until it
     // fully completes before restoring state.
@@ -52,6 +62,7 @@ export function batchedUpdates(fn, bookkeeping) {
   }
 }
 
+// interactiveUpdates(dispatchEvent, topLevelType, nativeEvent);
 export function interactiveUpdates(fn, a, b) {
   return _interactiveUpdatesImpl(fn, a, b);
 }

@@ -1563,6 +1563,7 @@ function beginWork(
           break;
         case ClassComponent: {
           const Component = workInProgress.type;
+          // isLegacyContextProvider判断class组件中是否额外声明childContextTypes，如果有的话就可以是provider提供者
           if (isLegacyContextProvider(Component)) {
             pushLegacyContextProvider(workInProgress);
           }

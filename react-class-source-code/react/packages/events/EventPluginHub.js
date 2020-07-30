@@ -55,6 +55,7 @@ const executeDispatchesAndRelease = function(
 const executeDispatchesAndReleaseSimulated = function(e) {
   return executeDispatchesAndRelease(e, true);
 };
+// 拿到events 调用executeDispatchesAndRelease
 const executeDispatchesAndReleaseTopLevel = function(e) {
   return executeDispatchesAndRelease(e, false);
 };
@@ -195,6 +196,7 @@ export function runEventsInBatch(
   simulated: boolean,
 ) {
   if (events !== null) {
+    // accumulateInto判断当前的events和next对应的刚产生的event，因为他们都可能是单个事件或者是数组，最终目的是要达成数组合并，最终返回一个数组，事件生产好之后，调用runEventsInBatch
     eventQueue = accumulateInto(eventQueue, events);
   }
 
@@ -213,6 +215,7 @@ export function runEventsInBatch(
       executeDispatchesAndReleaseSimulated,
     );
   } else {
+    // forEachAccumulated就是对processingEventQueue这个数组（也是就是个单独events）遍历调用executeDispatchesAndReleaseTopLevel这个方法
     forEachAccumulated(
       processingEventQueue,
       executeDispatchesAndReleaseTopLevel,
@@ -233,6 +236,7 @@ export function runExtractedEventsInBatch(
   nativeEvent: AnyNativeEvent,
   nativeEventTarget: EventTarget,
 ) {
+  // 生成事件，调用每个plugin的extractEvents方法来生产事件
   const events = extractEvents(
     topLevelType,
     targetInst,

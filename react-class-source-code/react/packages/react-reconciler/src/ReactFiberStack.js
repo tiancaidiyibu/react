@@ -60,6 +60,7 @@ function pop<T>(cursor: StackCursor<T>, fiber: Fiber): void {
   index--;
 }
 
+// index加1，然后valueStack[index]中加放入cursor.current,也就是老的value,再将新的value赋值到cursor.current
 function push<T>(cursor: StackCursor<T>, value: T, fiber: Fiber): void {
   index++;
 
@@ -70,7 +71,7 @@ function push<T>(cursor: StackCursor<T>, value: T, fiber: Fiber): void {
   }
 
   cursor.current = value;
-}
+} 
 
 function checkThatStackIsEmpty() {
   if (__DEV__) {

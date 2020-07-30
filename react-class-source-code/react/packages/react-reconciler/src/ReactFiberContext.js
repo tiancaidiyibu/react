@@ -33,9 +33,14 @@ if (__DEV__) {
 }
 
 // A cursor to the current merged context object on the stack.
+// 记录当前组件和他的父树一起提供给子树的childContext对象，初始默认是emptyContextObject {}。
 let contextStackCursor: StackCursor<Object> = createCursor(emptyContextObject);
 // A cursor to a boolean indicating whether the context has changed.
+
+// 这个就是用来标记子树的context是否变化的
 let didPerformWorkStackCursor: StackCursor<boolean> = createCursor(false);
+
+
 // Keep track of the previous context object that was on the stack.
 // We use this to get access to the parent context after we have already
 // pushed the next context provider, and now need to merge their contexts.
@@ -116,6 +121,7 @@ function hasContextChanged(): boolean {
   return didPerformWorkStackCursor.current;
 }
 
+// 判断class组件中是否额外声明childContextTypes，如果有的话就可以是provide提供者
 function isContextProvider(type: Function): boolean {
   const childContextTypes = type.childContextTypes;
   return childContextTypes !== null && childContextTypes !== undefined;

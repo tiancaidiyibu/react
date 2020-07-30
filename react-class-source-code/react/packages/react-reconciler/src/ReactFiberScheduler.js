@@ -674,6 +674,7 @@ function commitRoot(root: FiberRoot, finishedWork: Fiber): void {
       if (nextEffect !== null) {
         nextEffect = nextEffect.nextEffect;
       }
+
     }
   }
   stopCommitHostEffectsTimer();
@@ -714,6 +715,7 @@ function commitRoot(root: FiberRoot, finishedWork: Fiber): void {
         commitAllLifeCycles(root, committedExpirationTime);
       } catch (e) {
         didError = true;
+        
         error = e;
       }
     }
