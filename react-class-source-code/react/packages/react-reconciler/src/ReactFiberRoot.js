@@ -101,8 +101,8 @@ export type FiberRoot = {
 
 export function createFiberRoot(
   containerInfo: any,
-  isConcurrent: boolean,
-  hydrate: boolean,
+  isConcurrent: boolean,//false
+  hydrate: boolean, //false
 ): FiberRoot {
   // Cyclic construction. This cheats the type system right now because
   // stateNode is any.

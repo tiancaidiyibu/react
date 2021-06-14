@@ -1785,7 +1785,9 @@ function scheduleWorkToRoot(fiber: Fiber, expirationTime): FiberRoot | null {
  * @returns
  */
 function scheduleWork(fiber: Fiber, expirationTime: ExpirationTime) {
-  // ikki 获取fiberRoot，以及上层fiber的childrenExpirationTime
+  // 找到当前Fiber的root
+  // 更新节点的父节点链上的每个节点的expirationTime设置为这个update的expirationTime，除非他本身时间要小于expirationTime
+  // 最终返回 root 节点的Fiber对象
   const root = scheduleWorkToRoot(fiber, expirationTime);
   if (root === null) {
     return;

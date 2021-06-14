@@ -397,7 +397,10 @@ export function createWorkInProgress(
 
   return workInProgress;
 }
-
+/**
+ * 
+ * @param {*} isConcurrent  //false
+ */
 export function createHostRootFiber(isConcurrent: boolean): Fiber {
   let mode = isConcurrent ? ConcurrentMode | StrictMode : NoContext;
 

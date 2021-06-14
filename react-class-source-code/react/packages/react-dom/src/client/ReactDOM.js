@@ -352,7 +352,7 @@ function ReactRoot(
  * @callback cb
  */
 ReactRoot.prototype.render = function(
-  children: ReactNodeList,
+  children: ReactNodeList, 
   callback: ?() => mixed,
 ): Work {
   const root = this._internalRoot;
@@ -672,6 +672,7 @@ const ReactDOM: Object = {
    * @param {*} callback 回调函数
    */
   render(
+
     element: React$Element<any>,
     container: DOMContainer,
     callback: ?Function,
